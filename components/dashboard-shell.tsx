@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import type React from "react"
 import { cn } from "@/lib/utils"
 import { MainNav } from "@/components/main-nav"
@@ -21,6 +22,25 @@ interface DashboardShellProps {
 }
 
 export function DashboardShell({ children, className }: DashboardShellProps) {
+  const [userData, setUserData] = useState<{ name: string } | null>(null)
+  
+  useEffect(() => {
+    try {
+      const userDataStr = localStorage.getItem("userData")
+      if (userDataStr) {
+        const data = JSON.parse(userDataStr)
+        setUserData(data)
+      }
+    } catch (error) {
+      console.error("Error parsing user data:", error)
+    }
+  }, [])
+  
+  // Extract initials from name
+  const initials = userData?.name
+    ? userData.name.split(" ").map(n => n[0]).join("")
+    : "U"
+  
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen flex-col w-full bg-background/95">
@@ -45,11 +65,11 @@ export function DashboardShell({ children, className }: DashboardShellProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-xs font-medium text-primary">A</span>
+                    <span className="text-xs font-medium text-primary">{initials}</span>
                   </div>
                   <div className="text-sm">
-                    <p className="font-medium">Alex Johnson</p>
-                    <p className="text-xs text-muted-foreground">Verified DID</p>
+                    <p className="font-medium">{userData?.name || "User"}</p>
+                    <p className="text-xs text-muted-foreground">Verified</p>
                   </div>
                 </div>
               </div>

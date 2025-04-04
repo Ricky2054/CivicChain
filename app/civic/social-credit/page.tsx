@@ -1,211 +1,311 @@
-import type { Metadata } from "next"
-import { DashboardHeader } from "@/components/dashboard-header"
+"use client"
+
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
+import { DashboardHeader } from "@/components/dashboard-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { ArrowUpRight, Shield, Award, AlertCircle } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-
-export const metadata: Metadata = {
-  title: "Social Credit Score | CivicChain Finance",
-  description: "Track and manage your social credit score and benefits",
-}
+import { Award, TrendingUp, Shield, Check, Clock, Calendar, Users } from "lucide-react"
+import apiService from "@/lib/api-service"
+import { toast } from "@/components/ui/use-toast"
 
 export default function SocialCreditPage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [creditScore, setCreditScore] = useState<any>(null)
+  const [scoreDetails, setScoreDetails] = useState<any>(null)
+  const [recentActivities, setRecentActivities] = useState<any[]>([])
+  const [badges, setBadges] = useState<any[]>([])
+  const [benefits, setBenefits] = useState<any[]>([])
+  
+  useEffect(() => {
+    // Check if user is logged in
+    const userDataStr = localStorage.getItem("userData")
+    
+    if (!userDataStr) {
+      // Redirect to home if not logged in
+      router.push("/")
+      return
+    }
+    
+    try {
+      const userData = JSON.parse(userDataStr)
+      fetchSocialCreditData(userData.id)
+    } catch (error) {
+      console.error("Error parsing user data:", error)
+      toast({
+        title: "Error",
+        description: "Could not load your profile data",
+        variant: "destructive"
+      })
+    }
+  }, [router])
+  
+  const fetchSocialCreditData = async (userId: string) => {
+    try {
+      setLoading(true)
+      const response = await apiService.civic.getSocialCredit(userId)
+      
+      if (response.success && response.creditScore) {
+        setCreditScore(response.creditScore.score)
+        setScoreDetails(response.creditScore.details)
+        setRecentActivities(response.creditScore.recentActivities)
+        setBadges(response.creditScore.badges)
+        setBenefits(response.creditScore.benefits)
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to fetch social credit data",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching social credit data:", error)
+      toast({
+        title: "Error",
+        description: "Could not load your social credit data",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  // Calculate score level
+  const getScoreLevel = (score: number) => {
+    if (score >= 800) return "Excellent"
+    if (score >= 700) return "Very Good"
+    if (score >= 600) return "Good"
+    if (score >= 500) return "Fair"
+    return "Needs Improvement"
+  }
+  
+  // Get color based on score
+  const getScoreColor = (score: number) => {
+    if (score >= 800) return "text-emerald-500"
+    if (score >= 700) return "text-green-500"
+    if (score >= 600) return "text-yellow-500"
+    if (score >= 500) return "text-orange-500"
+    return "text-red-500"
+  }
+  
+  // Show loading state
+  if (loading) {
+    return (
+      <DashboardShell>
+        <DashboardHeader
+          heading="Social Credit Score"
+          text="Track your reputation and trustworthiness in the CivicChain ecosystem"
+        />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex flex-col items-center gap-2">
+            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+            <p className="text-sm text-muted-foreground">Loading your social credit data...</p>
+          </div>
+        </div>
+      </DashboardShell>
+    )
+  }
+  
   return (
     <DashboardShell>
-      <DashboardHeader heading="Social Credit Score" text="Your civic reputation and benefits based on community participation." />
+      <DashboardHeader
+        heading="Social Credit Score"
+        text="Track your reputation and trustworthiness in the CivicChain ecosystem"
+      />
       
-      <div className="grid gap-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xl font-semibold">Your Social Credit Score</CardTitle>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="w-[280px] text-xs">
-                      Your social credit score is calculated based on your financial behavior, civic engagement, and
-                      community contributions. A higher score unlocks additional benefits and privileges.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <CardDescription>Current standing and score history</CardDescription>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="col-span-1">
+          <CardHeader className="pb-2">
+            <CardTitle>Your Credit Score</CardTitle>
+            <CardDescription>Overall reputation score</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-col space-y-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Current Score</p>
-                  <div className="flex items-center">
-                    <span className="text-5xl font-bold">842</span>
-                    <span className="ml-3 flex items-center text-sm text-green-500">
-                      <ArrowUpRight className="mr-1 h-4 w-4" />
-                      +12 points this month
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex h-24 w-24 items-center justify-center rounded-full border-8 border-primary/20">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary">
-                    <span className="text-lg font-bold text-primary-foreground">A+</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium">Rating Category</span>
-                  <span className="font-medium">Excellent</span>
-                </div>
-                <Progress value={84} className="h-2" />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Poor (0-300)</span>
-                  <span>Fair (301-500)</span>
-                  <span>Good (501-700)</span>
-                  <span>Excellent (701-900)</span>
-                  <span>Elite (901-1000)</span>
+          <CardContent className="pt-4">
+            <div className="flex flex-col items-center justify-center">
+              <div className="relative">
+                <svg className="w-36 h-36" viewBox="0 0 100 100">
+                  <circle 
+                    className="text-muted stroke-current" 
+                    strokeWidth="8" 
+                    fill="transparent" 
+                    r="40" 
+                    cx="50" 
+                    cy="50" 
+                  />
+                  <circle 
+                    className="text-primary stroke-current" 
+                    strokeWidth="8" 
+                    strokeLinecap="round" 
+                    strokeDasharray={`${(creditScore/1000) * 251.2} 251.2`} 
+                    strokeDashoffset="0" 
+                    fill="transparent" 
+                    r="40" 
+                    cx="50" 
+                    cy="50" 
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={`text-3xl font-bold ${getScoreColor(creditScore)}`}>{creditScore}</span>
+                  <span className="text-xs text-muted-foreground">of 1000</span>
                 </div>
               </div>
               
-              <div className="rounded-md border bg-muted/20 p-4">
-                <h3 className="mb-2 text-sm font-medium">Next Milestone</h3>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="font-medium">Elite Status</p>
-                      <p className="text-xs text-muted-foreground">Unlock tax credit benefits and premium financial services</p>
+              <div className="mt-4 text-center">
+                <Badge className="px-3 py-1">
+                  {getScoreLevel(creditScore)}
+                </Badge>
+                <p className="mt-2 text-sm text-muted-foreground">Last updated: 2 days ago</p>
+              </div>
+              
+              {scoreDetails && (
+                <div className="w-full mt-6 space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Financial</span>
+                      <span className="font-medium">{scoreDetails.financial}%</span>
                     </div>
+                    <Progress value={scoreDetails.financial} className="h-1.5" />
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">58 points away</p>
-                    <p className="text-xs text-muted-foreground">900 points required</p>
+                  
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Civic</span>
+                      <span className="font-medium">{scoreDetails.civic}%</span>
+                    </div>
+                    <Progress value={scoreDetails.civic} className="h-1.5" />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Environmental</span>
+                      <span className="font-medium">{scoreDetails.environmental}%</span>
+                    </div>
+                    <Progress value={scoreDetails.environmental} className="h-1.5" />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Reputation</span>
+                      <span className="font-medium">{scoreDetails.reputation}%</span>
+                    </div>
+                    <Progress value={scoreDetails.reputation} className="h-1.5" />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Loyalty</span>
+                      <span className="font-medium">{scoreDetails.loyalty}%</span>
+                    </div>
+                    <Progress value={scoreDetails.loyalty} className="h-1.5" />
                   </div>
                 </div>
-                <Progress className="mt-2 h-2" value={93.5} />
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
         
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Current Benefits</CardTitle>
-              <CardDescription>Advantages unlocked by your score</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[
-                { name: "Loan Rate Reduction", description: "-1.2% on all loans", icon: <ArrowUpRight className="h-5 w-5 text-green-500" /> },
-                { name: "Premium Cashback", description: "3% on all transactions", icon: <Award className="h-5 w-5 text-primary" /> },
-                { name: "Priority Community Services", description: "Fast-track government services", icon: <Badge className="h-5 w-5 text-primary" /> },
-                { name: "DAO Voting Power", description: "+15% voting weight in governance", icon: <Shield className="h-5 w-5 text-primary" /> },
-              ].map((benefit, index) => (
-                <div key={index} className="flex items-center space-x-4 rounded-md border p-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                    {benefit.icon}
-                  </div>
-                  <div>
-                    <p className="font-medium">{benefit.name}</p>
-                    <p className="text-sm text-muted-foreground">{benefit.description}</p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Score Breakdown</CardTitle>
-              <CardDescription>Factors affecting your score</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[
-                { 
-                  category: "Civic Participation", 
-                  score: 92, 
-                  description: "Voting and community engagement",
-                  impact: "Very Positive",
-                  impactColor: "text-green-500"
-                },
-                { 
-                  category: "Financial Responsibility", 
-                  score: 88, 
-                  description: "Savings rate and debt management",
-                  impact: "Positive",
-                  impactColor: "text-green-500"
-                },
-                { 
-                  category: "Community Contribution", 
-                  score: 75, 
-                  description: "Volunteering and local economy support",
-                  impact: "Positive",
-                  impactColor: "text-green-500"
-                },
-                { 
-                  category: "Environmental Impact", 
-                  score: 65, 
-                  description: "Carbon footprint and sustainability",
-                  impact: "Neutral",
-                  impactColor: "text-amber-500"
-                },
-                { 
-                  category: "Education & Skills", 
-                  score: 80, 
-                  description: "Ongoing learning and skill development",
-                  impact: "Positive",
-                  impactColor: "text-green-500"
-                },
-              ].map((factor, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium">{factor.category}</p>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm ${factor.impactColor}`}>{factor.impact}</span>
-                      <span className="font-bold">{factor.score}/100</span>
-                    </div>
-                  </div>
-                  <Progress value={factor.score} className="h-2" />
-                  <p className="text-xs text-muted-foreground">{factor.description}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Score History</CardTitle>
-            <CardDescription>Your social credit progression over time</CardDescription>
+        <Card className="col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle>Benefits & Privileges</CardTitle>
+            <CardDescription>Your current social credit tier unlocks these benefits</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full flex flex-col items-center justify-center rounded-md border border-dashed text-muted-foreground">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-16 w-16"
-              >
-                <path d="M3 3v18h18" />
-                <path d="m19 9-5 5-4-4-3 3" />
-              </svg>
-              <p className="text-center text-sm">Score trend line chart</p>
-              <p className="text-center text-xs">This would be an actual chart in a real implementation</p>
+            <div className="grid gap-4 md:grid-cols-2">
+              {benefits.map((benefit, index) => (
+                <div key={index} className="border rounded-lg p-4 space-y-2">
+                  <div className="p-2 rounded-full inline-flex bg-primary/10 mb-2">
+                    {index === 0 ? <TrendingUp className="h-5 w-5 text-primary" /> :
+                     index === 1 ? <Shield className="h-5 w-5 text-primary" /> :
+                     index === 2 ? <Award className="h-5 w-5 text-primary" /> :
+                     <Users className="h-5 w-5 text-primary" />}
+                  </div>
+                  <h3 className="font-medium">{benefit.title}</h3>
+                  <p className="text-sm text-muted-foreground">{benefit.description}</p>
+                  <Badge variant="outline" className="mt-2">{benefit.discount}</Badge>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       </div>
+      
+      <Tabs defaultValue="activities" className="mt-6">
+        <TabsList className="grid w-full md:w-[500px] grid-cols-2">
+          <TabsTrigger value="activities">Recent Activities</TabsTrigger>
+          <TabsTrigger value="achievements">Achievements & Badges</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="activities" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activities</CardTitle>
+              <CardDescription>Activities that have affected your social credit score</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentActivities.map((activity) => (
+                  <div key={activity.id} className="flex items-start justify-between border-b pb-4 last:border-0 last:pb-0">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-primary/10 p-2 rounded-full mt-0.5">
+                        <Check className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{activity.activity}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>{activity.date}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-medium text-emerald-500">{activity.points}</span>
+                      <div className="flex gap-2 mt-1">
+                        <Badge variant="outline" className="text-xs">{activity.impact}</Badge>
+                        <Badge variant="secondary" className="text-xs">{activity.status}</Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="achievements" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Achievements & Badges</CardTitle>
+              <CardDescription>Recognition for your positive contributions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                {badges.map((badge, index) => (
+                  <div key={index} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="p-2 rounded-full bg-primary/10">
+                        <Award className="h-5 w-5 text-primary" />
+                      </div>
+                      <Badge variant={
+                        badge.level === "Gold" ? "default" :
+                        badge.level === "Silver" ? "secondary" : "outline"
+                      }>
+                        {badge.level}
+                      </Badge>
+                    </div>
+                    <h3 className="font-medium mt-2">{badge.name}</h3>
+                    <p className="text-sm text-muted-foreground mb-3">{badge.description}</p>
+                    <Progress value={badge.progress} className="h-1.5" />
+                    <p className="text-xs text-muted-foreground mt-2">{badge.progress}% Complete</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </DashboardShell>
   )
 } 

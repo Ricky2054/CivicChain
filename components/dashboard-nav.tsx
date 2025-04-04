@@ -2,198 +2,189 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
-  BarChart,
-  Wallet,
-  CircleDollarSign,
-  LineChart,
-  Shield,
-  BadgeCheck,
-  Trophy,
-  Users,
+  Activity,
   Building2,
+  CircleDollarSign,
+  CreditCard,
+  FileBarChart2,
+  HomeIcon,
+  LayoutDashboard,
+  LineChart,
+  UserCheck,
+  UsersRound,
+  Wallet,
+  Vote,
+  Award,
+  Heart,
+  Users,
+  Building,
+  HandCoins
 } from "lucide-react"
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarGroupContent,
-} from "@/components/ui/sidebar"
 
-interface NavItem {
-  title: string
-  href?: string
-  icon?: React.ReactNode
-  disabled?: boolean
-  external?: boolean
-  label?: string
-  children?: {
-    title: string
-    href: string
-    disabled?: boolean
-    external?: boolean
-    label?: string
-  }[]
+interface NavProps {
+  isCollapsed: boolean
 }
 
-const sidebarItems: { title: string; items: NavItem[] }[] = [
-  {
-    title: "Overview",
-    items: [
-      {
-        title: "Dashboard",
-        href: "/",
-        icon: <BarChart className="h-4 w-4" />,
-      },
-      {
-        title: "Analytics",
-        href: "/analytics",
-        icon: <LineChart className="h-4 w-4" />,
-      },
-    ],
-  },
-  {
-    title: "Finance",
-    items: [
-      {
-        title: "Wallet",
-        href: "/finance/wallet",
-        icon: <Wallet className="h-4 w-4" />,
-      },
-      {
-        title: "Transactions",
-        href: "/finance/transactions",
-        icon: <CircleDollarSign className="h-4 w-4" />,
-      },
-      {
-        title: "Investments",
-        href: "/finance/investments",
-        icon: <LineChart className="h-4 w-4" />,
-      },
-    ],
-  },
-  {
-    title: "Civic",
-    items: [
-      {
-        title: "Social Credit",
-        href: "/civic/social-credit",
-        icon: <Shield className="h-4 w-4" />,
-      },
-      {
-        title: "Engagement",
-        href: "/civic/engagement",
-        icon: <BadgeCheck className="h-4 w-4" />,
-      },
-      {
-        title: "Rewards",
-        href: "/civic/rewards",
-        icon: <Trophy className="h-4 w-4" />,
-      },
-    ],
-  },
-  {
-    title: "Community",
-    items: [
-      {
-        title: "Leaderboard",
-        href: "/community/leaderboard",
-        icon: <Users className="h-4 w-4" />,
-      },
-      {
-        title: "DAO Governance",
-        href: "/community/governance",
-        icon: <Building2 className="h-4 w-4" />,
-      },
-    ],
-  },
-]
-
-interface DashboardNavProps {
-  className?: string
-}
-
-export function DashboardNav({ className }: DashboardNavProps) {
+export function DashboardNav({ isCollapsed }: NavProps) {
   const pathname = usePathname()
-  
+
+  const routes = [
+    {
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/dashboard",
+      active: pathname === "/dashboard"
+    },
+    {
+      label: "Analytics",
+      icon: Activity,
+      href: "/analytics",
+      active: pathname === "/analytics"
+    },
+    {
+      label: "Finance",
+      icon: CircleDollarSign,
+      active: pathname.includes("/finance"),
+      href: "/finance",
+      subItems: [
+        {
+          label: "Wallet",
+          icon: Wallet,
+          href: "/finance/wallet",
+          active: pathname === "/finance/wallet"
+        },
+        {
+          label: "Transactions",
+          icon: CreditCard,
+          href: "/finance/transactions",
+          active: pathname === "/finance/transactions"
+        },
+        {
+          label: "Investments",
+          icon: LineChart,
+          href: "/finance/investments",
+          active: pathname === "/finance/investments"
+        },
+        {
+          label: "Community Staking",
+          icon: HandCoins,
+          href: "/finance/community-staking",
+          active: pathname === "/finance/community-staking"
+        }
+      ]
+    },
+    {
+      label: "Civic",
+      icon: UserCheck,
+      active: pathname.includes("/civic"),
+      href: "/civic",
+      subItems: [
+        {
+          label: "Social Credit",
+          icon: Award,
+          href: "/civic/social-credit",
+          active: pathname === "/civic/social-credit"
+        },
+        {
+          label: "Engagement",
+          icon: Heart,
+          href: "/civic/engagement",
+          active: pathname === "/civic/engagement"
+        },
+        {
+          label: "Rewards",
+          icon: FileBarChart2,
+          href: "/civic/rewards",
+          active: pathname === "/civic/rewards"
+        }
+      ]
+    },
+    {
+      label: "Community",
+      icon: UsersRound,
+      active: pathname.includes("/community"),
+      href: "/community",
+      subItems: [
+        {
+          label: "Leaderboard",
+          icon: LineChart,
+          href: "/community/leaderboard",
+          active: pathname === "/community/leaderboard"
+        },
+        {
+          label: "Governance",
+          icon: Vote,
+          href: "/community/governance",
+          active: pathname === "/community/governance"
+        }
+      ]
+    },
+    {
+      label: "API Test",
+      icon: Activity,
+      href: "/api-test",
+      active: pathname === "/api-test"
+    }
+  ]
+
   return (
-    <nav className={cn("flex w-full flex-col gap-4", className)}>
-      {sidebarItems.map((section, i) => (
-        <SidebarGroup key={i} className="px-1">
-          <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground py-2">
-            {section.title}
-          </SidebarGroupLabel>
-          <SidebarGroupContent className="space-y-1">
-            <SidebarMenu>
-              {section.items.map((item, j) => {
-                const isActive = 
-                  item.href === pathname || 
-                  (item.href !== "/" && pathname?.startsWith(item.href || ""))
-                
-                return (
-                  <SidebarMenuItem key={j}>
-                    <Link href={item.href || "#"} passHref>
-                      <SidebarMenuButton 
-                        isActive={isActive}
-                        tooltip={item.title}
-                        className={cn(
-                          "transition-colors",
-                          isActive ? "bg-muted font-medium" : "hover:bg-muted/50",
-                          item.disabled && "pointer-events-none opacity-60"
-                        )}
-                      >
-                        {item.icon && <span className={cn("mr-2", isActive && "text-primary")}>{item.icon}</span>}
-                        <span>{item.title}</span>
-                        {item.label && (
-                          <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                            {item.label}
-                          </span>
-                        )}
-                      </SidebarMenuButton>
+    <div
+      data-collapsed={isCollapsed}
+      className="group flex flex-col gap-4 py-2 data-[collapsed=true]:py-2"
+    >
+      <nav className="grid gap-1 px-2 group-[[data-collapsed=true]]:justify-center group-[[data-collapsed=true]]:px-2">
+        {routes.map((route, index) =>
+          route.subItems ? (
+            <div key={index}>
+              <Link
+                href={route.href}
+                className={cn(
+                  buttonVariants({ variant: route.active ? "default" : "ghost", size: "sm" }),
+                  "justify-start mb-1",
+                  isCollapsed && "justify-center"
+                )}
+              >
+                <route.icon className="mr-2 h-4 w-4" />
+                {!isCollapsed && <span>{route.label}</span>}
+              </Link>
+              {!isCollapsed && route.active && (
+                <div className="ml-4 mb-2 grid gap-1">
+                  {route.subItems.map((item, i) => (
+                    <Link
+                      key={i}
+                      href={item.href}
+                      className={cn(
+                        buttonVariants({ variant: item.active ? "secondary" : "ghost", size: "sm" }),
+                        "justify-start px-2 py-1.5 text-xs h-8"
+                      )}
+                    >
+                      <item.icon className="mr-2 h-3.5 w-3.5" />
+                      <span>{item.label}</span>
                     </Link>
-                    {item.children && item.children.length > 0 && (
-                      <SidebarMenuSub>
-                        {item.children.map((child, k) => {
-                          const isChildActive = child.href === pathname
-                          
-                          return (
-                            <SidebarMenuSubItem key={k}>
-                              <Link href={child.href} passHref>
-                                <SidebarMenuSubButton 
-                                  isActive={isChildActive}
-                                  className={cn(
-                                    "transition-colors",
-                                    isChildActive ? "font-medium" : "hover:bg-muted/50",
-                                    child.disabled && "pointer-events-none opacity-60"
-                                  )}
-                                >
-                                  {child.title}
-                                  {child.label && (
-                                    <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                                      {child.label}
-                                    </span>
-                                  )}
-                                </SidebarMenuSubButton>
-                              </Link>
-                            </SidebarMenuSubItem>
-                          )
-                        })}
-                      </SidebarMenuSub>
-                    )}
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      ))}
-    </nav>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link
+              key={index}
+              href={route.href}
+              className={cn(
+                buttonVariants({ variant: route.active ? "default" : "ghost", size: "sm" }),
+                "justify-start",
+                isCollapsed && "justify-center"
+              )}
+            >
+              <route.icon className="mr-2 h-4 w-4" />
+              {!isCollapsed && <span>{route.label}</span>}
+            </Link>
+          )
+        )}
+      </nav>
+    </div>
   )
 }
 
