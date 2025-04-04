@@ -23,9 +23,9 @@ interface DashboardShellProps {
 export function DashboardShell({ children, className }: DashboardShellProps) {
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex min-h-screen flex-col w-full">
-        <header className="sticky top-0 z-40 border-b bg-background w-full">
-          <div className="flex h-16 items-center justify-between px-4 md:px-6">
+      <div className="flex min-h-screen flex-col w-full bg-background/95">
+        <header className="sticky top-0 z-40 border-b bg-background/95 w-full">
+          <div className="flex h-16 items-center justify-between px-4 md:px-8">
             <MainNav />
             <div className="flex items-center gap-4">
               <ModeToggle />
@@ -34,11 +34,11 @@ export function DashboardShell({ children, className }: DashboardShellProps) {
           </div>
         </header>
         <div className="flex-1 flex w-full h-[calc(100vh-4rem)]">
-          <Sidebar variant="inset" className="hidden md:block">
+          <Sidebar variant="static" className="w-64 md:block border-r">
             <SidebarHeader className="flex h-[60px] items-center border-b px-6">
               <span className="font-bold">CivicChain Finance</span>
             </SidebarHeader>
-            <SidebarContent>
+            <SidebarContent className="py-2">
               <DashboardNav />
             </SidebarContent>
             <SidebarFooter className="border-t p-4">
@@ -55,11 +55,13 @@ export function DashboardShell({ children, className }: DashboardShellProps) {
               </div>
             </SidebarFooter>
           </Sidebar>
-          <SidebarInset className="w-full">
-            <main className="flex w-full flex-1 flex-col overflow-auto p-4 md:p-6">
-              <div className={cn("flex flex-1 flex-col gap-4 max-w-7xl mx-auto w-full", className)}>{children}</div>
+          <div className="flex-1 overflow-auto">
+            <main className="flex w-full flex-1 flex-col p-5 md:p-8">
+              <div className={cn("flex flex-1 flex-col gap-6 max-w-7xl mx-auto w-full", className)}>
+                {children}
+              </div>
             </main>
-          </SidebarInset>
+          </div>
         </div>
       </div>
     </SidebarProvider>

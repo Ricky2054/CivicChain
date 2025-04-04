@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from "@/lib/utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Vote, Award, MapPin, Calendar, Users } from "lucide-react"
+import { MapPin, Calendar, Users, BadgeCheck } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 interface CivicEngagementProps {
@@ -68,96 +68,82 @@ const completedActivities = [
 export function CivicEngagement({ className }: CivicEngagementProps) {
   return (
     <Card className={cn("", className)}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Civic Engagement</CardTitle>
-            <CardDescription>Upcoming events and completed activities</CardDescription>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Vote className="h-5 w-5 text-primary" />
-            <span className="text-sm font-medium">320 Total Points</span>
-          </div>
+      <CardHeader className="pb-2">
+        <div className="flex flex-col space-y-1.5">
+          <CardTitle className="text-base">Civic Engagement</CardTitle>
+          <CardDescription>Upcoming events and completed activities</CardDescription>
+        </div>
+        <div className="flex items-center mt-1">
+          <BadgeCheck className="h-4 w-4 text-indigo-400 mr-1.5" />
+          <span className="text-sm font-medium">
+            <span className="text-indigo-400">320</span> Total Points
+          </span>
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="upcoming">
-          <TabsList className="mb-4">
+        <Tabs defaultValue="upcoming" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
             <TabsTrigger value="completed">Completed</TabsTrigger>
             <TabsTrigger value="map">District Map</TabsTrigger>
           </TabsList>
           <TabsContent value="upcoming">
             <div className="space-y-4">
-              {upcomingEvents.map((event) => (
-                <div key={event.id} className="rounded-lg border p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <h4 className="font-medium">{event.title}</h4>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <MapPin className="mr-1 h-4 w-4" />
-                        {event.location}
-                      </div>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Calendar className="mr-1 h-4 w-4" />
-                        {event.date} at {event.time}
-                      </div>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Users className="mr-1 h-4 w-4" />
-                        {event.participants} participants
-                      </div>
+              {upcomingEvents.slice(0, 1).map((event) => (
+                <div key={event.id} className="rounded-md border p-3">
+                  <h4 className="font-medium text-sm">Community Cleanup</h4>
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      <MapPin className="mr-1.5 h-3.5 w-3.5 flex-shrink-0" />
+                      {event.location}
                     </div>
-                    <div className="flex flex-col items-end space-y-2">
-                      <Badge variant="outline" className="flex items-center">
-                        <Award className="mr-1 h-3 w-3" />
-                        {event.points} points
-                      </Badge>
-                      <Button size="sm">Register</Button>
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      <Calendar className="mr-1.5 h-3.5 w-3.5 flex-shrink-0" />
+                      {event.date} at {event.time}
                     </div>
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      <Users className="mr-1.5 h-3.5 w-3.5 flex-shrink-0" />
+                      {event.participants} participants
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <Badge variant="outline" className="text-xs flex items-center gap-1 bg-indigo-500/10 border-indigo-500/20 text-indigo-400">
+                      <span>{event.points} points</span>
+                    </Badge>
+                    <Button variant="secondary" size="sm" className="h-8 text-xs px-4">Register</Button>
                   </div>
                 </div>
               ))}
-              <Button variant="outline" className="w-full">
-                View All Events
-              </Button>
             </div>
           </TabsContent>
           <TabsContent value="completed">
-            <div className="space-y-4">
-              {completedActivities.map((activity) => (
-                <div key={activity.id} className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-3">
+              {completedActivities.slice(0, 2).map((activity) => (
+                <div key={activity.id} className="flex items-center justify-between rounded-md border p-3">
                   <div className="space-y-1">
-                    <h4 className="font-medium">{activity.title}</h4>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Calendar className="mr-1 h-4 w-4" />
+                    <h4 className="font-medium text-sm">{activity.title}</h4>
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      <Calendar className="mr-1.5 h-3.5 w-3.5" />
                       {activity.date}
                     </div>
                   </div>
                   <div className="flex flex-col items-end space-y-1">
-                    <Badge variant="outline" className="flex items-center">
-                      <Award className="mr-1 h-3 w-3" />
-                      {activity.points} points
+                    <Badge variant="outline" className="text-xs flex items-center gap-1 bg-indigo-500/10 border-indigo-500/20 text-indigo-400">
+                      <span>{activity.points} points</span>
                     </Badge>
-                    <span className="text-xs font-medium text-emerald-500">{activity.status}</span>
                   </div>
                 </div>
               ))}
-              <Button variant="outline" className="w-full">
-                View All Activities
-              </Button>
             </div>
           </TabsContent>
           <TabsContent value="map" className="flex justify-center">
-            <div className="relative h-[300px] w-full rounded-lg border bg-muted/30">
+            <div className="relative h-[150px] w-full rounded-md border bg-muted/30">
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
-                  <MapPin className="mx-auto h-8 w-8 text-muted-foreground" />
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Interactive district map with civic engagement heatmap
+                  <MapPin className="mx-auto h-6 w-6 text-muted-foreground" />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Interactive district map
                   </p>
-                  <Button variant="outline" size="sm" className="mt-4">
-                    Load Map
-                  </Button>
                 </div>
               </div>
             </div>

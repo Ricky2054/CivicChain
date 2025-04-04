@@ -17,9 +17,9 @@ export function DashboardHeader({
   className,
 }: DashboardHeaderProps) {
   return (
-    <div className={cn("flex flex-col gap-1 pb-6", className)}>
-      <h1 className="text-2xl font-bold tracking-tight">{heading}</h1>
-      {text && <p className="text-muted-foreground">{text}</p>}
+    <div className={cn("flex flex-col gap-2 pb-8", className)}>
+      <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{heading}</h1>
+      {text && <p className="text-muted-foreground max-w-3xl">{text}</p>}
       {children}
     </div>
   )
