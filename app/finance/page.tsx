@@ -9,14 +9,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CircleDollarSign, TrendingUp, Wallet, CreditCard, LineChart, ArrowUpRight, ArrowDownRight, Users, Building, Landmark } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import apiService from "@/lib/api-service"
-import { toast } from "@/components/ui/use-toast"
+import { useToast } from "@/components/ui/use-toast"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 export default function FinancePage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [userData, setUserData] = useState<any>(null)
   const [accounts, setAccounts] = useState<any[]>([])
   const [transactions, setTransactions] = useState<any[]>([])
+  const [loggedIn, setLoggedIn] = useState<boolean>(true)
   const [opportunities, setOpportunities] = useState<any[]>([
     { 
       title: "Low-Interest Rural Development Loan", 
@@ -51,27 +55,49 @@ export default function FinancePage() {
     // Check if user is logged in
     const userDataStr = localStorage.getItem("userData")
     
-    if (!userDataStr) {
-      // Redirect to home if not logged in
-      router.push("/")
+    if (!userDataStr || userDataStr === "undefined") {
+      // Set logged in state to false instead of redirecting
+      setLoggedIn(false)
+      setLoading(false)
       return
     }
     
     try {
-      const parsedData = JSON.parse(userDataStr)
+      // Safely parse the JSON data with error handling
+      let parsedData;
+      try {
+        parsedData = JSON.parse(userDataStr);
+      } catch (parseError) {
+        console.error("Invalid JSON in localStorage:", parseError);
+        // Set logged in state to false instead of redirecting
+        setLoggedIn(false)
+        setLoading(false)
+        return;
+      }
+      
+      if (!parsedData || !parsedData.id) {
+        console.error("User data is missing ID");
+        // Set logged in state to false instead of redirecting
+        setLoggedIn(false)
+        setLoading(false)
+        return;
+      }
+      
       setUserData(parsedData)
       
       // Fetch financial data
       fetchFinancialData(parsedData.id)
     } catch (error) {
-      console.error("Error parsing user data:", error)
+      console.error("Error processing user data:", error)
+      setLoggedIn(false)
+      setLoading(false)
       toast({
         title: "Error",
         description: "Could not load your profile data",
         variant: "destructive"
       })
     }
-  }, [router])
+  }, [toast])
   
   const fetchFinancialData = async (userId: string) => {
     try {
@@ -79,14 +105,25 @@ export default function FinancePage() {
       
       // Fetch accounts
       const accountsResponse = await apiService.finance.getAccounts(userId)
-      if (accountsResponse.success) {
+      if (accountsResponse.accounts) {
         setAccounts(accountsResponse.accounts)
       }
       
       // Fetch transactions
       const transactionsResponse = await apiService.finance.getTransactions(userId, 5, 0)
-      if (transactionsResponse.success) {
+      if (transactionsResponse.transactions) {
         setTransactions(transactionsResponse.transactions)
+      }
+      
+      // Fetch opportunities
+      try {
+        const opportunitiesResponse = await apiService.finance.getOpportunities(userId)
+        if (opportunitiesResponse.opportunities) {
+          setOpportunities(opportunitiesResponse.opportunities)
+        }
+      } catch (error) {
+        console.error("Error fetching opportunities:", error)
+        // Keep using default opportunities if API fails
       }
     } catch (error) {
       console.error("Error fetching financial data:", error)
@@ -113,6 +150,41 @@ export default function FinancePage() {
             <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
             <p className="text-sm text-muted-foreground">Loading your financial data...</p>
           </div>
+        </div>
+      </DashboardShell>
+    )
+  }
+  
+  // Show login required state
+  if (!loggedIn) {
+    return (
+      <DashboardShell>
+        <DashboardHeader
+          heading="Financial Dashboard"
+          text="Manage your financial assets, transactions, and opportunities"
+        />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Login Required</CardTitle>
+              <CardDescription>
+                Please log in to access your financial information
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <p className="text-muted-foreground text-sm">
+                You need to be logged in to view your financial dashboard, accounts, and opportunities.
+              </p>
+              <div className="flex gap-4 justify-end">
+                <Button variant="outline" asChild>
+                  <Link href="/">Go to Home</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/login">Login</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </DashboardShell>
     )

@@ -27,7 +27,7 @@ export function DashboardShell({ children, className }: DashboardShellProps) {
   useEffect(() => {
     try {
       const userDataStr = localStorage.getItem("userData")
-      if (userDataStr) {
+      if (userDataStr && userDataStr !== "undefined") {
         const data = JSON.parse(userDataStr)
         setUserData(data)
       }

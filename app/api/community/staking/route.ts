@@ -151,4 +151,79 @@ export async function GET(request: Request) {
       { status: 500 }
     )
   }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json()
+    const { userId, poolId, amount, action } = body
+    
+    if (!userId || !poolId || !amount || !action) {
+      return NextResponse.json(
+        { error: "userId, poolId, amount, and action are required" },
+        { status: 400 }
+      )
+    }
+    
+    if (action !== 'stake' && action !== 'unstake') {
+      return NextResponse.json(
+        { error: "action must be either 'stake' or 'unstake'" },
+        { status: 400 }
+      )
+    }
+    
+    // In a real app, this would update a database
+    // For demo, we'll return a success response with mock updated data
+    
+    const pool = {
+      id: poolId,
+      name: poolId === 1 ? "Neighborhood Improvement" : 
+            poolId === 2 ? "Local Education Fund" : 
+            "Green Energy Initiative",
+      apy: `${(7.5 + Math.random() * 2).toFixed(1)}%`,
+    }
+    
+    // Create a transaction record
+    const transaction = {
+      id: `tx-${Date.now()}`,
+      type: action,
+      pool: pool.name,
+      amount: `${amount} CVC`,
+      timestamp: new Date().toISOString(),
+      status: "completed",
+    }
+    
+    // Calculate new stake amount
+    const newStake = {
+      poolId,
+      poolName: pool.name,
+      amount: `${amount} CVC`,
+      amountValue: amount,
+      percentage: Math.floor(Math.random() * 20) + 20,
+      yield: `${(amount * 0.08 * Math.random()).toFixed(1)} CVC`,
+      daysStaked: 0,
+      yieldRate: pool.apy
+    }
+    
+    const responseData = {
+      success: true,
+      message: action === 'stake' 
+        ? `Successfully staked ${amount} CVC to ${pool.name}` 
+        : `Successfully unstaked ${amount} CVC from ${pool.name}`,
+      transaction,
+      newStake,
+      userBalance: action === 'stake' 
+        ? `${550 - amount} CVC` 
+        : `${550 + amount} CVC`
+    }
+    
+    return NextResponse.json(responseData)
+  } catch (error) {
+    console.error("Error in staking API:", error)
+    
+    return NextResponse.json(
+      { success: false, error: "Internal server error" },
+      { status: 500 }
+    )
+  }
 } 

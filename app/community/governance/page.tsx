@@ -1,484 +1,560 @@
-import type { Metadata } from "next"
-import { DashboardHeader } from "@/components/dashboard-header"
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
+import { DashboardHeader } from "@/components/dashboard-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { 
-  Vote, 
-  Building2, 
-  ChevronUp, 
-  BarChart, 
-  ThumbsUp,
-  X,
-  CalendarDays,
-  Check,
-  Users
+  Building, Vote, Clock, MessageSquare, Check, XCircle, AlertCircle,
+  ChevronRight, CircleCheck, CircleX, BarChart3, FileText
 } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
-export const metadata: Metadata = {
-  title: "DAO Governance | CivicChain Finance",
-  description: "Participate in community governance through decentralized decision making",
-}
-
-export default function GovernancePage() {
+export default function CommunityGovernancePage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(true)
+  const [activeProposals, setActiveProposals] = useState<any[]>([])
+  const [pastProposals, setPastProposals] = useState<any[]>([])
+  const [votingStatus, setVotingStatus] = useState<Record<string, string>>({})
+  
+  useEffect(() => {
+    // Check if user is logged in
+    const userDataStr = localStorage.getItem("userData")
+    
+    if (!userDataStr) {
+      // Redirect to home if not logged in
+      router.push("/")
+      return
+    }
+    
+    fetchGovernanceData()
+  }, [router])
+  
+  const fetchGovernanceData = async () => {
+    try {
+      setLoading(true)
+      
+      // In a real app, this would fetch from an API
+      // For now, generate mock data
+      
+      const active = [
+        {
+          id: "prop-123",
+          title: "School Infrastructure Improvement Fund",
+          description: "Allocate funds from the community treasury to renovate and upgrade facilities at local schools",
+          proposer: {
+            name: "Education Council",
+            avatar: "/placeholder.svg"
+          },
+          category: "Infrastructure",
+          status: "Active",
+          endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+          votes: {
+            for: 326,
+            against: 124,
+            abstain: 23
+          },
+          totalVotes: 473,
+          threshold: 500,
+          quorum: 400
+        },
+        {
+          id: "prop-124",
+          title: "Community Green Space Development",
+          description: "Create new public gardens and recreational spaces in underutilized urban areas",
+          proposer: {
+            name: "Environment Committee",
+            avatar: "/placeholder.svg"
+          },
+          category: "Environment",
+          status: "Active",
+          endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+          votes: {
+            for: 482,
+            against: 76,
+            abstain: 18
+          },
+          totalVotes: 576,
+          threshold: 500,
+          quorum: 400
+        },
+        {
+          id: "prop-125",
+          title: "Digital Literacy Program Funding",
+          description: "Allocate resources to expand digital literacy programs for seniors and underserved communities",
+          proposer: {
+            name: "Tech Inclusion Group",
+            avatar: "/placeholder.svg"
+          },
+          category: "Education",
+          status: "Active",
+          endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+          votes: {
+            for: 289,
+            against: 98,
+            abstain: 42
+          },
+          totalVotes: 429,
+          threshold: 500,
+          quorum: 400
+        }
+      ]
+      
+      const past = [
+        {
+          id: "prop-121",
+          title: "Community Health Center Funding",
+          description: "Fund expansion of the local health center to serve more residents",
+          proposer: {
+            name: "Healthcare Alliance",
+            avatar: "/placeholder.svg"
+          },
+          category: "Healthcare",
+          status: "Passed",
+          endTime: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+          votes: {
+            for: 578,
+            against: 156,
+            abstain: 32
+          },
+          totalVotes: 766,
+          threshold: 500,
+          quorum: 400
+        },
+        {
+          id: "prop-122",
+          title: "Public Transit Improvement Initiative",
+          description: "Allocate funds to improve bus routes and add electric vehicles to the fleet",
+          proposer: {
+            name: "Transit Board",
+            avatar: "/placeholder.svg"
+          },
+          category: "Infrastructure",
+          status: "Failed",
+          endTime: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          votes: {
+            for: 312,
+            against: 452,
+            abstain: 28
+          },
+          totalVotes: 792,
+          threshold: 500,
+          quorum: 400
+        }
+      ]
+      
+      setActiveProposals(active)
+      setPastProposals(past)
+    } catch (error) {
+      console.error("Error fetching governance data:", error)
+      toast({
+        title: "Error",
+        description: "Could not load governance data",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  const handleVote = async (proposalId: string, vote: 'for' | 'against' | 'abstain') => {
+    try {
+      // In a real app, this would make an API call
+      // For now, just update local state
+      
+      setVotingStatus(prev => ({
+        ...prev,
+        [proposalId]: vote
+      }))
+      
+      // Update the vote count in the proposals
+      setActiveProposals(prev => 
+        prev.map(proposal => {
+          if (proposal.id === proposalId) {
+            const updatedVotes = { ...proposal.votes }
+            updatedVotes[vote]++
+            
+            return {
+              ...proposal,
+              votes: updatedVotes,
+              totalVotes: proposal.totalVotes + 1
+            }
+          }
+          return proposal
+        })
+      )
+      
+      toast({
+        title: "Vote Recorded",
+        description: `You have voted ${vote} on this proposal`,
+      })
+    } catch (error) {
+      console.error("Error voting:", error)
+      toast({
+        title: "Error",
+        description: "Could not record your vote",
+        variant: "destructive"
+      })
+    }
+  }
+  
+  const formatTimeRemaining = (endTimeStr: string) => {
+    const endTime = new Date(endTimeStr)
+    const now = new Date()
+    
+    const diffMs = endTime.getTime() - now.getTime()
+    
+    if (diffMs < 0) {
+      return "Ended"
+    }
+    
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    
+    if (diffDays > 0) {
+      return `${diffDays} days, ${diffHours} hours`
+    } else {
+      return `${diffHours} hours`
+    }
+  }
+  
+  const getCategoryIcon = (category: string) => {
+    switch (category.toLowerCase()) {
+      case 'infrastructure':
+        return <Building className="h-5 w-5" />
+      case 'education':
+        return <FileText className="h-5 w-5" />
+      case 'healthcare':
+        return <AlertCircle className="h-5 w-5" />
+      case 'environment':
+        return <Building className="h-5 w-5" />
+      default:
+        return <Building className="h-5 w-5" />
+    }
+  }
+  
+  // Get badge color based on status
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'passed':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+      case 'failed':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+      case 'active':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+    }
+  }
+  
+  // Show loading state
+  if (loading) {
+    return (
+      <DashboardShell>
+        <DashboardHeader
+          heading="Community Governance"
+          text="Participate in decision making through distributed governance"
+        />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex flex-col items-center gap-2">
+            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+            <p className="text-sm text-muted-foreground">Loading governance data...</p>
+          </div>
+        </div>
+      </DashboardShell>
+    )
+  }
+  
   return (
     <DashboardShell>
-      <DashboardHeader heading="DAO Governance" text="Participate in community decision-making through decentralized governance." />
+      <DashboardHeader
+        heading="Community Governance"
+        text="Participate in decision making through distributed governance"
+      />
       
-      <Tabs defaultValue="proposals" className="w-full">
-        <TabsList className="grid w-full md:w-[400px] grid-cols-3">
-          <TabsTrigger value="proposals">Proposals</TabsTrigger>
-          <TabsTrigger value="voting">Voting Power</TabsTrigger>
-          <TabsTrigger value="treasury">Treasury</TabsTrigger>
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Your Governance Status</CardTitle>
+          <CardDescription>Your voting power and participation metrics</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="p-4 border rounded-lg">
+              <h3 className="text-sm font-medium text-muted-foreground">Voting Power</h3>
+              <p className="text-2xl font-bold mt-1">145 CVC</p>
+              <div className="mt-2 flex items-center text-sm">
+                <span className="text-xs text-muted-foreground">Based on your staked tokens</span>
+              </div>
+            </div>
+            
+            <div className="p-4 border rounded-lg">
+              <h3 className="text-sm font-medium text-muted-foreground">Participation Rate</h3>
+              <p className="text-2xl font-bold mt-1">78%</p>
+              <Progress value={78} className="h-1.5 mt-2" />
+            </div>
+            
+            <div className="p-4 border rounded-lg">
+              <h3 className="text-sm font-medium text-muted-foreground">Proposals Voted</h3>
+              <p className="text-2xl font-bold mt-1">8/12</p>
+              <div className="mt-2 flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-7 text-xs">
+                  View History
+                </Button>
+                <Badge variant="secondary" className="h-7 text-xs">Top 15%</Badge>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Tabs defaultValue="active" className="mt-6">
+        <TabsList className="grid w-full md:w-[400px] grid-cols-2">
+          <TabsTrigger value="active">Active Proposals</TabsTrigger>
+          <TabsTrigger value="past">Past Proposals</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="proposals" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
+        <TabsContent value="active" className="mt-4 space-y-6">
+          {activeProposals.length === 0 ? (
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Voting Power</CardTitle>
-                <Vote className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">1.15x</div>
-                <p className="text-xs text-muted-foreground">Your vote multiplier</p>
-                <div className="mt-2 text-xs text-green-500 flex items-center">
-                  <ChevronUp className="mr-1 h-3 w-3" />
-                  +0.05x from last month
+              <CardContent className="flex flex-col items-center justify-center py-8">
+                <div className="rounded-full bg-muted p-3">
+                  <Vote className="h-6 w-6 text-muted-foreground" />
                 </div>
+                <h3 className="mt-4 text-lg font-medium">No Active Proposals</h3>
+                <p className="mt-2 text-sm text-muted-foreground text-center max-w-md">
+                  There are no active proposals at the moment. Check back later or create a new proposal.
+                </p>
+                <Button className="mt-4">Create Proposal</Button>
               </CardContent>
             </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Participation Rate</CardTitle>
-                <BarChart className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">87%</div>
-                <p className="text-xs text-muted-foreground">Governance participation</p>
-                <div className="mt-2 space-y-1">
-                  <Progress value={87} className="h-2" />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Low</span>
-                    <span>Average</span>
-                    <span>High</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">CVC Tokens</CardTitle>
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">550</div>
-                <p className="text-xs text-muted-foreground">Governance tokens</p>
-                <div className="mt-2 text-xs text-muted-foreground">
-                  <span className="font-medium">Next threshold: </span>
-                  <span>1000 CVC for proposal rights</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Proposals</CardTitle>
-              <CardDescription>Current proposals open for voting</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  { 
-                    id: 1, 
-                    title: "Community Garden Funding", 
-                    description: "Allocate 5,000 CVC for expanding the downtown community garden project", 
-                    deadline: "Apr 12, 2025",
-                    category: "Environmental",
-                    votes: { for: 345, against: 102 },
-                    status: "active",
-                    voted: "for"
-                  },
-                  { 
-                    id: 2, 
-                    title: "Civic Education Program", 
-                    description: "Fund a new education initiative to promote civic literacy in local schools", 
-                    deadline: "Apr 15, 2025",
-                    category: "Education",
-                    votes: { for: 286, against: 157 },
-                    status: "active",
-                    voted: null
-                  },
-                  { 
-                    id: 3, 
-                    title: "Public Transit Discount", 
-                    description: "Allocate funds for public transit discounts for active community members", 
-                    deadline: "Apr 18, 2025",
-                    category: "Transportation",
-                    votes: { for: 412, against: 89 },
-                    status: "active",
-                    voted: null
-                  },
-                  { 
-                    id: 4, 
-                    title: "Small Business Grants", 
-                    description: "Create a grant program to support local small businesses and entrepreneurs", 
-                    deadline: "Apr 22, 2025",
-                    category: "Economic",
-                    votes: { for: 253, against: 201 },
-                    status: "active",
-                    voted: "against"
-                  },
-                ].map(proposal => (
-                  <div key={proposal.id} className="rounded-md border p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium">{proposal.title}</h3>
-                        <p className="text-sm text-muted-foreground">{proposal.description}</p>
-                      </div>
-                      <Badge>{proposal.category}</Badge>
-                    </div>
-                    
+          ) : (
+            activeProposals.map(proposal => (
+              <Card key={proposal.id} className="overflow-hidden">
+                <CardHeader className="bg-muted/50">
+                  <div className="flex justify-between items-start">
                     <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span>For: {proposal.votes.for}</span>
-                        <span>Against: {proposal.votes.against}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusColor(proposal.status)}>
+                          {proposal.status}
+                        </Badge>
+                        <Badge variant="outline">{proposal.category}</Badge>
                       </div>
-                      <div className="flex h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-                        <div 
-                          className="bg-green-500" 
-                          style={{ width: `${(proposal.votes.for / (proposal.votes.for + proposal.votes.against)) * 100}%` }} 
-                        />
-                        <div 
-                          className="bg-red-500" 
-                          style={{ width: `${(proposal.votes.against / (proposal.votes.for + proposal.votes.against)) * 100}%` }} 
-                        />
+                      <CardTitle>{proposal.title}</CardTitle>
+                      <CardDescription>{proposal.description}</CardDescription>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-1 text-sm mb-1">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span>{formatTimeRemaining(proposal.endTime)} remaining</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback>
+                            {proposal.proposer.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm">{proposal.proposer.name}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="py-6">
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>Total Votes: {proposal.totalVotes}</span>
+                        <span>Quorum: {proposal.totalVotes}/{proposal.quorum}</span>
+                      </div>
+                      <Progress 
+                        value={proposal.totalVotes} 
+                        max={proposal.quorum} 
+                        className="h-1.5"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="border rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Check className="h-4 w-4 text-green-500" />
+                          <h4 className="font-medium">For</h4>
+                        </div>
+                        <p className="text-lg font-bold">{proposal.votes.for}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {Math.round((proposal.votes.for / proposal.totalVotes) * 100)}% of votes
+                        </p>
+                      </div>
+                      
+                      <div className="border rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <XCircle className="h-4 w-4 text-red-500" />
+                          <h4 className="font-medium">Against</h4>
+                        </div>
+                        <p className="text-lg font-bold">{proposal.votes.against}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {Math.round((proposal.votes.against / proposal.totalVotes) * 100)}% of votes
+                        </p>
+                      </div>
+                      
+                      <div className="border rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle className="h-4 w-4 text-yellow-500" />
+                          <h4 className="font-medium">Abstain</h4>
+                        </div>
+                        <p className="text-lg font-bold">{proposal.votes.abstain}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {Math.round((proposal.votes.abstain / proposal.totalVotes) * 100)}% of votes
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="bg-muted/30 flex justify-between border-t">
+                  <Button variant="outline" size="sm">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    View Discussion
+                  </Button>
+                  
+                  {votingStatus[proposal.id] ? (
+                    <div className="flex items-center">
+                      <Badge variant="outline" className="mr-2">
+                        You voted: {votingStatus[proposal.id]}
+                      </Badge>
+                      <Button variant="ghost" size="sm">
+                        Change Vote
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="border-green-200 text-green-700 bg-green-50 hover:bg-green-100 hover:text-green-800"
+                        onClick={() => handleVote(proposal.id, 'for')}
+                      >
+                        <CircleCheck className="h-4 w-4 mr-2" />
+                        For
+                      </Button>
+                      <Button size="sm" variant="outline" className="border-red-200 text-red-700 bg-red-50 hover:bg-red-100 hover:text-red-800"
+                        onClick={() => handleVote(proposal.id, 'against')}
+                      >
+                        <CircleX className="h-4 w-4 mr-2" />
+                        Against
+                      </Button>
+                      <Button size="sm" variant="outline"
+                        onClick={() => handleVote(proposal.id, 'abstain')}
+                      >
+                        Abstain
+                      </Button>
+                    </div>
+                  )}
+                </CardFooter>
+              </Card>
+            ))
+          )}
+          
+          <div className="flex justify-center mt-8">
+            <Button>
+              Create New Proposal
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="past" className="mt-4 space-y-6">
+          {pastProposals.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-8">
+                <div className="rounded-full bg-muted p-3">
+                  <BarChart3 className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium">No Past Proposals</h3>
+                <p className="mt-2 text-sm text-muted-foreground text-center max-w-md">
+                  There are no completed proposals yet. Past proposals will appear here once voting has concluded.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            pastProposals.map(proposal => (
+              <Card key={proposal.id}>
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusColor(proposal.status)}>
+                          {proposal.status}
+                        </Badge>
+                        <Badge variant="outline">{proposal.category}</Badge>
+                      </div>
+                      <CardTitle>{proposal.title}</CardTitle>
+                      <CardDescription>{proposal.description}</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback>
+                            {proposal.proposer.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm">{proposal.proposer.name}</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Ended {new Date(proposal.endTime).toLocaleDateString()}
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground flex items-center">
-                        <CalendarDays className="mr-1 h-3 w-3" />
-                        Deadline: {proposal.deadline}
-                      </p>
-                      <div className="flex space-x-2">
-                        {proposal.voted ? (
-                          <Badge variant={proposal.voted === "for" ? "default" : "destructive"} className="flex items-center">
-                            {proposal.voted === "for" ? (
-                              <>
-                                <ThumbsUp className="mr-1 h-3 w-3" />
-                                Voted For
-                              </>
-                            ) : (
-                              <>
-                                <X className="mr-1 h-3 w-3" />
-                                Voted Against
-                              </>
-                            )}
-                          </Badge>
-                        ) : (
-                          <>
-                            <Button size="sm" variant="outline" className="h-8">
-                              <ThumbsUp className="mr-1 h-3 w-3" />
-                              For
-                            </Button>
-                            <Button size="sm" variant="outline" className="h-8">
-                              <X className="mr-1 h-3 w-3" />
-                              Against
-                            </Button>
-                          </>
-                        )}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="border rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Check className="h-4 w-4 text-green-500" />
+                          <h4 className="font-medium">For</h4>
+                        </div>
+                        <p className="text-lg font-bold">{proposal.votes.for}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {Math.round((proposal.votes.for / proposal.totalVotes) * 100)}% of votes
+                        </p>
+                      </div>
+                      
+                      <div className="border rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <XCircle className="h-4 w-4 text-red-500" />
+                          <h4 className="font-medium">Against</h4>
+                        </div>
+                        <p className="text-lg font-bold">{proposal.votes.against}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {Math.round((proposal.votes.against / proposal.totalVotes) * 100)}% of votes
+                        </p>
+                      </div>
+                      
+                      <div className="border rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle className="h-4 w-4 text-yellow-500" />
+                          <h4 className="font-medium">Abstain</h4>
+                        </div>
+                        <p className="text-lg font-bold">{proposal.votes.abstain}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {Math.round((proposal.votes.abstain / proposal.totalVotes) * 100)}% of votes
+                        </p>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline">View Past Proposals</Button>
-              <Button>Create Proposal</Button>
-            </CardFooter>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Governance Activity</CardTitle>
-              <CardDescription>Latest voting and proposal activities</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {[
-                  { 
-                    action: "Proposal Approved", 
-                    proposal: "Community Garden Funding", 
-                    result: "Passed with 77% support",
-                    time: "2 days ago" 
-                  },
-                  { 
-                    action: "Vote Cast", 
-                    proposal: "Civic Education Program", 
-                    result: "You voted: For",
-                    time: "4 days ago",
-                    isYou: true 
-                  },
-                  { 
-                    action: "Proposal Created", 
-                    proposal: "Public Transit Discount", 
-                    result: "By CivicCouncil",
-                    time: "1 week ago" 
-                  },
-                  { 
-                    action: "Vote Cast", 
-                    proposal: "Small Business Grants", 
-                    result: "You voted: Against",
-                    time: "1 week ago",
-                    isYou: true 
-                  },
-                  { 
-                    action: "Proposal Implemented", 
-                    proposal: "Public Park Renovation", 
-                    result: "Successfully executed",
-                    time: "2 weeks ago" 
-                  },
-                ].map((activity, index) => (
-                  <div key={index} className={`flex items-center justify-between rounded-md border p-3 ${activity.isYou ? 'bg-muted/20' : ''}`}>
-                    <div>
-                      <p className="text-sm font-medium">{activity.action}</p>
-                      <p className="text-xs">{activity.proposal}</p>
-                      <p className="text-xs text-muted-foreground">{activity.result}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">{activity.time}</p>
-                      {activity.isYou && <Badge variant="outline" className="ml-2 text-xs">Your Activity</Badge>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="voting" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Voting Power</CardTitle>
-              <CardDescription>Details of your governance influence</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-md border p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-medium">Current Multiplier</h3>
-                    <span className="text-2xl font-bold">1.15x</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Your votes are counted as 1.15x based on your social credit score and governance participation.
-                  </p>
-                  <div className="mt-3 space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span>Progress to Next Level (1.25x)</span>
-                      <span>65%</span>
-                    </div>
-                    <Progress value={65} className="h-2" />
-                  </div>
-                </div>
-                
-                <div className="rounded-md border p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-medium">Governance Tokens</h3>
-                    <span className="text-2xl font-bold">550 CVC</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    CVC tokens give you additional voting rights and proposal creation ability.
-                  </p>
-                  <div className="mt-3 space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span>Progress to Proposal Rights (1000 CVC)</span>
-                      <span>55%</span>
-                    </div>
-                    <Progress value={55} className="h-2" />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="rounded-md border p-4">
-                <h3 className="text-lg font-medium mb-3">Voting Power Breakdown</h3>
-                <div className="space-y-4">
-                  {[
-                    { source: "Social Credit Score", value: "0.50x", description: "Based on score of 842" },
-                    { source: "Governance Participation", value: "0.25x", description: "87% participation rate" },
-                    { source: "Community Rank", value: "0.15x", description: "Rank #12 out of 547" },
-                    { source: "Token Holding", value: "0.25x", description: "550 CVC tokens" },
-                  ].map((factor, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{factor.source}</p>
-                        <p className="text-xs text-muted-foreground">{factor.description}</p>
-                      </div>
-                      <p className="text-xl font-bold">{factor.value}</p>
-                    </div>
-                  ))}
-                  <div className="pt-2 mt-2 border-t flex items-center justify-between">
-                    <p className="font-medium">Total Multiplier</p>
-                    <p className="text-xl font-bold text-primary">1.15x</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="rounded-md border p-4">
-                <h3 className="text-lg font-medium mb-3">How to Increase Your Voting Power</h3>
-                <div className="space-y-3">
-                  {[
-                    { action: "Improve Social Credit Score", impact: "Significant", difficulty: "Medium" },
-                    { action: "Participate in More Votes", impact: "Medium", difficulty: "Low" },
-                    { action: "Climb Community Ranks", impact: "Medium", difficulty: "High" },
-                    { action: "Acquire More CVC Tokens", impact: "High", difficulty: "Medium" },
-                  ].map((strategy, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{strategy.action}</p>
-                        <div className="flex items-center mt-1">
-                          <Badge variant="outline" className="mr-2 text-xs">Impact: {strategy.impact}</Badge>
-                          <Badge variant="outline" className="text-xs">Difficulty: {strategy.difficulty}</Badge>
-                        </div>
-                      </div>
-                      <Button size="sm" variant="outline">Learn More</Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="treasury" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Community Treasury</CardTitle>
-              <CardDescription>Current funds and resource allocation</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="rounded-md border bg-muted/20 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium">Total Treasury</h3>
-                      <p className="text-sm text-muted-foreground">Available for community projects</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-3xl font-bold">128,500 CVC</p>
-                      <p className="text-sm text-muted-foreground">≈ $442,325</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">Allocation by Category</h3>
-                  
-                  <div className="space-y-3">
-                    {[
-                      { category: "Infrastructure", percentage: 35, amount: "45,000 CVC" },
-                      { category: "Education", percentage: 25, amount: "32,000 CVC" },
-                      { category: "Environment", percentage: 20, amount: "25,700 CVC" },
-                      { category: "Social Services", percentage: 15, amount: "19,300 CVC" },
-                      { category: "Emergency Fund", percentage: 5, amount: "6,500 CVC" },
-                    ].map((allocation, index) => (
-                      <div key={index} className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">{allocation.category}</span>
-                          <div className="text-right">
-                            <span className="text-muted-foreground">{allocation.percentage}%</span>
-                            <span className="ml-2 font-medium">{allocation.amount}</span>
-                          </div>
-                        </div>
-                        <Progress value={allocation.percentage} className="h-2" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-md border p-4">
-                    <h3 className="text-lg font-medium mb-3">Recent Treasury Activities</h3>
-                    <div className="space-y-3">
-                      {[
-                        { action: "Fund Allocation", description: "Community Garden Project", amount: "-5,000 CVC", date: "Apr 2, 2025" },
-                        { action: "Token Acquisition", description: "Community Rewards Program", amount: "+12,500 CVC", date: "Mar 28, 2025" },
-                        { action: "Grant Disbursement", description: "Education Initiative", amount: "-8,000 CVC", date: "Mar 15, 2025" },
-                        { action: "Tax Contribution", description: "Quarterly Local Tax", amount: "+25,000 CVC", date: "Mar 1, 2025" },
-                      ].map((activity, index) => (
-                        <div key={index} className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">{activity.action}</p>
-                            <p className="text-xs text-muted-foreground">{activity.description}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className={`font-medium ${activity.amount.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
-                              {activity.amount}
-                            </p>
-                            <p className="text-xs text-muted-foreground">{activity.date}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="rounded-md border p-4">
-                    <h3 className="text-lg font-medium mb-3">Upcoming Funding Rounds</h3>
-                    <div className="space-y-3">
-                      {[
-                        { 
-                          title: "Q2 Community Projects", 
-                          description: "Funding for approved community initiatives", 
-                          amount: "30,000 CVC",
-                          deadline: "Apr 30, 2025",
-                          status: "Collecting Proposals" 
-                        },
-                        { 
-                          title: "Environmental Grants", 
-                          description: "Sustainability and green initiatives", 
-                          amount: "15,000 CVC",
-                          deadline: "May 15, 2025",
-                          status: "Coming Soon" 
-                        },
-                        { 
-                          title: "Education Scholarship", 
-                          description: "Support for local educational needs", 
-                          amount: "20,000 CVC",
-                          deadline: "Jun 1, 2025",
-                          status: "Coming Soon" 
-                        },
-                      ].map((funding, index) => (
-                        <div key={index} className="rounded-md border p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="font-medium">{funding.title}</p>
-                            <Badge variant="outline">{funding.status}</Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{funding.description}</p>
-                          <div className="flex items-center justify-between mt-2">
-                            <p className="text-xs text-muted-foreground">
-                              <CalendarDays className="inline-block mr-1 h-3 w-3" />
-                              Deadline: {funding.deadline}
-                            </p>
-                            <p className="text-sm font-medium">{funding.amount}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button variant="outline" className="w-full">View Treasury Dashboard</Button>
-            </CardFooter>
-          </Card>
+                </CardContent>
+                <CardFooter className="flex justify-end border-t pt-4">
+                  <Button variant="outline" size="sm">
+                    View Results
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))
+          )}
         </TabsContent>
       </Tabs>
     </DashboardShell>

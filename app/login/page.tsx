@@ -37,7 +37,7 @@ export default function LoginPage() {
       
       if (response.success) {
         // Store user data in localStorage
-        localStorage.setItem("userData", JSON.stringify(response.userData))
+        localStorage.setItem("userData", JSON.stringify(response.user))
         
         // Show success message
         toast({

@@ -32,7 +32,7 @@ export default function CommunityStakingPage() {
     // Check if user is logged in
     try {
       const userDataStr = localStorage.getItem("userData")
-      if (!userDataStr) {
+      if (!userDataStr || userDataStr === 'undefined') {
         router.push("/")
         return
       }

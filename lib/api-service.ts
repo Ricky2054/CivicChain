@@ -27,61 +27,17 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
 export const authApi = {
   // Login user
   login: async (email: string, password: string) => {
-    // For demo, we'll simulate a successful login with mock data
-    // In a real app, this would call a backend endpoint
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Simulate API response
-        resolve({
-          success: true,
-          message: "Login successful",
-          userData: {
-            id: "user-123",
-            name: "Rahul Sharma",
-            email: email,
-            phone: "+91 98765 43210",
-            aadhaar: {
-              number: "XXXX-XXXX-6789",
-              verified: true,
-              verifiedAt: new Date().toISOString()
-            },
-            location: {
-              city: "New Delhi",
-              state: "Delhi",
-              postalCode: "110001"
-            },
-            profileCompleted: true,
-            createdAt: new Date().toISOString()
-          }
-        });
-      }, 800);
+    return fetchAPI('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
     });
   },
   
   // Register user
   register: async (formData: any) => {
-    // For demo, we'll simulate a successful registration with mock data
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Simulate API response
-        resolve({
-          success: true,
-          message: "Registration successful",
-          userData: {
-            id: "user-" + Math.floor(100 + Math.random() * 900),
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            aadhaar: {
-              number: formData.aadhaarNumber.substring(0, 8).replace(/\d/g, "X") + 
-                     formData.aadhaarNumber.substring(8),
-              verified: false
-            },
-            profileCompleted: false,
-            createdAt: new Date().toISOString()
-          }
-        });
-      }, 1200);
+    return fetchAPI('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(formData),
     });
   },
 };
@@ -102,6 +58,19 @@ export const userApi = {
       body: JSON.stringify({ userId, ...profileData }),
     });
   },
+  
+  // Get user's social credit information
+  getSocialCredit: async (userId: string) => {
+    return fetchAPI(`/api/user/social-credit?userId=${userId}`);
+  },
+  
+  // Update user's social credit
+  updateSocialCredit: async (userId: string, category: string, change: number, reason: string) => {
+    return fetchAPI('/api/user/social-credit', {
+      method: 'PUT',
+      body: JSON.stringify({ userId, category, change, reason }),
+    });
+  },
 };
 
 /**
@@ -113,9 +82,52 @@ export const financeApi = {
     return fetchAPI(`/api/finance/accounts?userId=${userId}`);
   },
   
+  // Create a new account
+  createAccount: async (accountData: any) => {
+    return fetchAPI('/api/finance/accounts', {
+      method: 'POST',
+      body: JSON.stringify(accountData),
+    });
+  },
+  
+  // Update an account
+  updateAccount: async (accountId: string, updateData: any) => {
+    return fetchAPI('/api/finance/accounts', {
+      method: 'PUT',
+      body: JSON.stringify({ accountId, ...updateData }),
+    });
+  },
+  
+  // Deactivate an account
+  deactivateAccount: async (accountId: string) => {
+    return fetchAPI(`/api/finance/accounts?accountId=${accountId}`, {
+      method: 'DELETE',
+    });
+  },
+  
   // Get user's transactions
-  getTransactions: async (userId: string, limit = 10, offset = 0) => {
-    return fetchAPI(`/api/finance/transactions?userId=${userId}&limit=${limit}&offset=${offset}`);
+  getTransactions: async (userId: string, limit = 10, offset = 0, accountId?: string) => {
+    let endpoint = `/api/finance/transactions?userId=${userId}&limit=${limit}&offset=${offset}`;
+    if (accountId) {
+      endpoint += `&accountId=${accountId}`;
+    }
+    return fetchAPI(endpoint);
+  },
+  
+  // Create a new transaction
+  createTransaction: async (transactionData: any) => {
+    return fetchAPI('/api/finance/transactions', {
+      method: 'POST',
+      body: JSON.stringify(transactionData),
+    });
+  },
+  
+  // Update transaction status
+  updateTransactionStatus: async (transactionId: string, status: string) => {
+    return fetchAPI('/api/finance/transactions', {
+      method: 'PUT',
+      body: JSON.stringify({ transactionId, status }),
+    });
   },
 
   // Get financial opportunities
@@ -128,14 +140,215 @@ export const financeApi = {
  * Civic API
  */
 export const civicApi = {
-  // Get social credit score
-  getSocialCredit: async (userId: string) => {
-    return fetchAPI(`/api/civic/social-credit?userId=${userId}`);
+  // Get civic engagement opportunities
+  getEngagement: async (userId: string, category?: string, type?: string) => {
+    let endpoint = `/api/civic/engagement?userId=${userId}`;
+    if (category) endpoint += `&category=${category}`;
+    if (type) endpoint += `&type=${type}`;
+    return fetchAPI(endpoint);
   },
   
-  // Get civic engagement opportunities
-  getEngagement: async (userId: string) => {
-    return fetchAPI(`/api/civic/engagement?userId=${userId}`);
+  // Register for an event
+  registerForEvent: async (userId: string, eventId: string) => {
+    return fetchAPI('/api/civic/engagement', {
+      method: 'POST',
+      body: JSON.stringify({ userId, eventId }),
+    });
+  },
+  
+  // Create a new civic event
+  createEvent: async (eventData: any) => {
+    return fetchAPI('/api/civic/engagement', {
+      method: 'POST',
+      body: JSON.stringify(eventData),
+    });
+  },
+  
+  // Update participant status for an event
+  updateParticipantStatus: async (eventId: string, userId: string, action: string) => {
+    return fetchAPI('/api/civic/engagement', {
+      method: 'PUT',
+      body: JSON.stringify({ eventId, userId, action }),
+    });
+  },
+  
+  // Update an event
+  updateEvent: async (eventId: string, updateData: any) => {
+    return fetchAPI('/api/civic/engagement', {
+      method: 'PUT',
+      body: JSON.stringify({ eventId, ...updateData }),
+    });
+  },
+  
+  // Deactivate an event
+  deactivateEvent: async (eventId: string) => {
+    return fetchAPI(`/api/civic/engagement?id=${eventId}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+/**
+ * Community API
+ */
+export const communityApi = {
+  // Get staking information
+  getStaking: async (userId: string) => {
+    return fetchAPI(`/api/community/staking?userId=${userId}`);
+  },
+  
+  // Get leaderboard data
+  getLeaderboard: async () => {
+    return fetchAPI(`/api/community/leaderboard`);
+  },
+  
+  // Governance API
+  governance: {
+    // Get proposals
+    getProposals: async (userId: string, status?: string, category?: string, limit = 10, offset = 0) => {
+      let endpoint = `/api/community/governance?userId=${userId}&limit=${limit}&offset=${offset}`;
+      if (status) endpoint += `&status=${status}`;
+      if (category) endpoint += `&category=${category}`;
+      return fetchAPI(endpoint);
+    },
+    
+    // Create a new proposal
+    createProposal: async (proposalData: any) => {
+      return fetchAPI('/api/community/governance', {
+        method: 'POST',
+        body: JSON.stringify(proposalData),
+      });
+    },
+    
+    // Add a comment to a proposal
+    addComment: async (proposalId: string, userId: string, comment: string) => {
+      return fetchAPI('/api/community/governance', {
+        method: 'POST',
+        body: JSON.stringify({ proposalId, userId, comment }),
+      });
+    },
+    
+    // Vote on a proposal
+    voteOnProposal: async (proposalId: string, userId: string, vote: string) => {
+      return fetchAPI('/api/community/governance', {
+        method: 'PUT',
+        body: JSON.stringify({ proposalId, userId, action: 'vote', vote }),
+      });
+    },
+    
+    // Admin action on a proposal
+    adminAction: async (proposalId: string, userId: string, adminAction: string) => {
+      return fetchAPI('/api/community/governance', {
+        method: 'PUT',
+        body: JSON.stringify({ proposalId, userId, adminAction }),
+      });
+    },
+    
+    // Remove a proposal
+    removeProposal: async (proposalId: string, userId: string) => {
+      return fetchAPI(`/api/community/governance?id=${proposalId}&userId=${userId}`, {
+        method: 'DELETE',
+      });
+    },
+  },
+  
+  // Forums API
+  forums: {
+    // Get forums list
+    getForums: async (category?: string, limit = 10, offset = 0) => {
+      let endpoint = `/api/community/forums?limit=${limit}&offset=${offset}`;
+      if (category) endpoint += `&category=${category}`;
+      return fetchAPI(endpoint);
+    },
+    
+    // Get single forum with posts
+    getForum: async (forumId: string, limit = 10, offset = 0) => {
+      return fetchAPI(`/api/community/forums?forumId=${forumId}&limit=${limit}&offset=${offset}`);
+    },
+    
+    // Create a new forum
+    createForum: async (title: string, description: string, category: string, userId: string) => {
+      return fetchAPI('/api/community/forums', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          action: 'createForum',
+          title, 
+          description, 
+          category, 
+          userId 
+        }),
+      });
+    },
+    
+    // Create a new post
+    createPost: async (forumId: string, title: string, content: string, userId: string) => {
+      return fetchAPI('/api/community/forums', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          action: 'createPost',
+          forumId, 
+          title, 
+          content, 
+          userId 
+        }),
+      });
+    },
+    
+    // Add a comment to a post
+    addComment: async (forumId: string, postId: string, content: string, userId: string) => {
+      return fetchAPI('/api/community/forums', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          action: 'addComment',
+          forumId, 
+          postId, 
+          content, 
+          userId 
+        }),
+      });
+    },
+    
+    // Like or unlike a post
+    toggleLikePost: async (forumId: string, postId: string, userId: string) => {
+      return fetchAPI('/api/community/forums', {
+        method: 'PUT',
+        body: JSON.stringify({ 
+          action: 'likePost',
+          forumId, 
+          postId, 
+          userId 
+        }),
+      });
+    },
+    
+    // Edit a post
+    editPost: async (forumId: string, postId: string, userId: string, title?: string, content?: string) => {
+      return fetchAPI('/api/community/forums', {
+        method: 'PUT',
+        body: JSON.stringify({ 
+          action: 'editPost',
+          forumId, 
+          postId, 
+          userId,
+          title,
+          content 
+        }),
+      });
+    },
+    
+    // Delete a post
+    deletePost: async (forumId: string, postId: string, userId: string) => {
+      return fetchAPI(`/api/community/forums?forumId=${forumId}&postId=${postId}&userId=${userId}`, {
+        method: 'DELETE',
+      });
+    },
+    
+    // Delete a forum (admin only)
+    deleteForum: async (forumId: string, userId: string) => {
+      return fetchAPI(`/api/community/forums?forumId=${forumId}&userId=${userId}`, {
+        method: 'DELETE',
+      });
+    },
   },
 };
 
@@ -145,6 +358,7 @@ const apiService = {
   user: userApi,
   finance: financeApi,
   civic: civicApi,
+  community: communityApi
 };
 
 export default apiService; 

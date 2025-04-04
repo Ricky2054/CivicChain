@@ -12,12 +12,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Check, Clock, CalendarDays, Users, Shield, BadgeCheck, Building2, Heart, MapPin, ChevronRight, CheckSquare } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import apiService from "@/lib/api-service"
-import { toast } from "@/components/ui/use-toast"
+import { useToast } from "@/components/ui/use-toast"
+
+// Default user data to use when real data isn't available
+const DEFAULT_USER_DATA = {
+  id: "guest-user",
+  name: "Guest User",
+  email: "guest@example.com"
+}
 
 export default function CivicEngagementPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("local")
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState<number | null>(null)
   const [localEvents, setLocalEvents] = useState<any[]>([])
   const [onlineEvents, setOnlineEvents] = useState<any[]>([])
   const [userEngagement, setUserEngagement] = useState<any>(null)
@@ -26,9 +35,15 @@ export default function CivicEngagementPage() {
     // Check if user is logged in
     const userDataStr = localStorage.getItem("userData")
     
-    if (!userDataStr) {
-      // Redirect to home if not logged in
-      router.push("/")
+    if (!userDataStr || userDataStr === "undefined") {
+      // Use default data for demo/development
+      fetchEngagementData(DEFAULT_USER_DATA.id)
+      
+      toast({
+        title: "Demo Mode",
+        description: "You're viewing the civic engagement page in demo mode.",
+        variant: "default"
+      })
       return
     }
     
@@ -37,29 +52,33 @@ export default function CivicEngagementPage() {
       fetchEngagementData(userData.id)
     } catch (error) {
       console.error("Error parsing user data:", error)
+      
+      // Use default data instead of redirecting
+      fetchEngagementData(DEFAULT_USER_DATA.id)
+      
       toast({
         title: "Error",
-        description: "Could not load your profile data",
+        description: "Could not load your profile data. Using demo data instead.",
         variant: "destructive"
       })
     }
-  }, [router])
+  }, [router, toast])
   
   const fetchEngagementData = async (userId: string) => {
     try {
       setLoading(true)
       
-      // Fetch local events
-      const localResponse = await apiService.civic.getEngagementOpportunities(userId, 'local')
-      if (localResponse.success) {
-        setLocalEvents(localResponse.events)
-        setUserEngagement(localResponse.userEngagement)
-      }
-      
-      // Fetch online events
-      const onlineResponse = await apiService.civic.getEngagementOpportunities(userId, 'online')
-      if (onlineResponse.success) {
-        setOnlineEvents(onlineResponse.events)
+      // Fetch engagement data
+      const response = await apiService.civic.getEngagement(userId)
+      if (response.opportunities) {
+        // Separate local and online events
+        setLocalEvents(response.opportunities.filter((opp: any) => opp.type === 'local') || [])
+        setOnlineEvents(response.opportunities.filter((opp: any) => opp.type === 'online') || [])
+        
+        // Set user engagement stats
+        if (response.userStats) {
+          setUserEngagement(response.userStats)
+        }
       }
     } catch (error) {
       console.error("Error fetching engagement data:", error)
@@ -70,6 +89,84 @@ export default function CivicEngagementPage() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+  
+  const handleRegister = async (eventId: number) => {
+    const userDataStr = localStorage.getItem("userData")
+    if (!userDataStr || userDataStr === "undefined") {
+      toast({
+        title: "Error",
+        description: "You must be logged in to register for events",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    try {
+      setSubmitting(eventId)
+      
+      let userId = DEFAULT_USER_DATA.id
+      
+      // Try to get the actual user ID
+      if (userDataStr && userDataStr !== "undefined") {
+        const userData = JSON.parse(userDataStr)
+        userId = userData.id
+      }
+      
+      // Call the API to register
+      const response = await fetch('/api/civic/engagement', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: userId,
+          eventId: eventId
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        // Update the local event state to reflect registration
+        const updateEvents = (events: any[]) => {
+          return events.map(event => {
+            if (event.id === eventId) {
+              return {
+                ...event,
+                isRegistered: true,
+                participants: event.participants + 1
+              }
+            }
+            return event
+          })
+        }
+        
+        setLocalEvents(updateEvents(localEvents))
+        setOnlineEvents(updateEvents(onlineEvents))
+        
+        // Show success message
+        toast({
+          title: "Registered",
+          description: "You have successfully registered for this event",
+        })
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: data.message || "Could not register for the event",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error("Registration error:", error)
+      toast({
+        title: "Error",
+        description: "An error occurred while registering for the event",
+        variant: "destructive"
+      })
+    } finally {
+      setSubmitting(null)
     }
   }
   
@@ -134,9 +231,9 @@ export default function CivicEngagementPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Impact Score</span>
-                  <span className="text-lg font-bold">{userEngagement.impactScore}</span>
+                  <span className="text-lg font-bold">{userEngagement.totalPoints}</span>
                 </div>
-                <Progress value={userEngagement.impactScore / 10} className="h-2" />
+                <Progress value={userEngagement.progressPercent} className="h-2" />
                 <p className="text-xs text-muted-foreground">{userEngagement.pointsToNextLevel} points until Level {userEngagement.level + 1}</p>
               </div>
               
@@ -233,7 +330,27 @@ export default function CivicEngagementPage() {
                       
                       <div className="flex flex-col items-end gap-2">
                         <Badge className="px-3 py-1">{event.points} points</Badge>
-                        <Button className="mt-auto">Register</Button>
+                        {event.isRegistered ? (
+                          <Button variant="outline" className="mt-auto" disabled>
+                            <Check className="mr-2 h-4 w-4" />
+                            Registered
+                          </Button>
+                        ) : (
+                          <Button 
+                            className="mt-auto" 
+                            onClick={() => handleRegister(event.id)}
+                            disabled={submitting === event.id}
+                          >
+                            {submitting === event.id ? (
+                              <>
+                                <span className="animate-spin mr-2 h-4 w-4 border-2 border-t-transparent border-background rounded-full" />
+                                Registering...
+                              </>
+                            ) : (
+                              "Register"
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -295,7 +412,27 @@ export default function CivicEngagementPage() {
                       
                       <div className="flex flex-col items-end gap-2">
                         <Badge className="px-3 py-1">{event.points} points</Badge>
-                        <Button className="mt-auto">Register</Button>
+                        {event.isRegistered ? (
+                          <Button variant="outline" className="mt-auto" disabled>
+                            <Check className="mr-2 h-4 w-4" />
+                            Registered
+                          </Button>
+                        ) : (
+                          <Button 
+                            className="mt-auto" 
+                            onClick={() => handleRegister(event.id)}
+                            disabled={submitting === event.id}
+                          >
+                            {submitting === event.id ? (
+                              <>
+                                <span className="animate-spin mr-2 h-4 w-4 border-2 border-t-transparent border-background rounded-full" />
+                                Registering...
+                              </>
+                            ) : (
+                              "Register"
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>

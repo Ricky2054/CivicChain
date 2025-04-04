@@ -10,10 +10,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Award, TrendingUp, Shield, Check, Clock, Calendar, Users } from "lucide-react"
 import apiService from "@/lib/api-service"
-import { toast } from "@/components/ui/use-toast"
+import { useToast } from "@/components/ui/use-toast"
+
+// Default user data for demo mode
+const DEFAULT_USER_DATA = {
+  id: "guest-user",
+  name: "Guest User",
+  email: "guest@example.com"
+}
 
 export default function SocialCreditPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [creditScore, setCreditScore] = useState<any>(null)
   const [scoreDetails, setScoreDetails] = useState<any>(null)
@@ -25,9 +33,15 @@ export default function SocialCreditPage() {
     // Check if user is logged in
     const userDataStr = localStorage.getItem("userData")
     
-    if (!userDataStr) {
-      // Redirect to home if not logged in
-      router.push("/")
+    if (!userDataStr || userDataStr === "undefined") {
+      // Use default data for demo/development
+      fetchSocialCreditData(DEFAULT_USER_DATA.id)
+      
+      toast({
+        title: "Demo Mode",
+        description: "You're viewing the social credit page in demo mode.",
+        variant: "default"
+      })
       return
     }
     
@@ -36,25 +50,29 @@ export default function SocialCreditPage() {
       fetchSocialCreditData(userData.id)
     } catch (error) {
       console.error("Error parsing user data:", error)
+      
+      // Use default data instead of redirecting
+      fetchSocialCreditData(DEFAULT_USER_DATA.id)
+      
       toast({
         title: "Error",
-        description: "Could not load your profile data",
+        description: "Could not load your profile data. Using demo data instead.",
         variant: "destructive"
       })
     }
-  }, [router])
+  }, [router, toast])
   
   const fetchSocialCreditData = async (userId: string) => {
     try {
       setLoading(true)
       const response = await apiService.civic.getSocialCredit(userId)
       
-      if (response.success && response.creditScore) {
-        setCreditScore(response.creditScore.score)
-        setScoreDetails(response.creditScore.details)
-        setRecentActivities(response.creditScore.recentActivities)
-        setBadges(response.creditScore.badges)
-        setBenefits(response.creditScore.benefits)
+      if (response.score) {
+        setCreditScore(response.score)
+        setScoreDetails(response.categories)
+        setRecentActivities(response.recentActivities || [])
+        setBadges(response.badges || [])
+        setBenefits(response.benefits || [])
       } else {
         toast({
           title: "Error",
@@ -288,17 +306,10 @@ export default function SocialCreditPage() {
                       <div className="p-2 rounded-full bg-primary/10">
                         <Award className="h-5 w-5 text-primary" />
                       </div>
-                      <Badge variant={
-                        badge.level === "Gold" ? "default" :
-                        badge.level === "Silver" ? "secondary" : "outline"
-                      }>
-                        {badge.level}
-                      </Badge>
+                      <Badge variant="outline">{badge.dateEarned}</Badge>
                     </div>
-                    <h3 className="font-medium mt-2">{badge.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-3">{badge.description}</p>
-                    <Progress value={badge.progress} className="h-1.5" />
-                    <p className="text-xs text-muted-foreground mt-2">{badge.progress}% Complete</p>
+                    <h3 className="font-medium">{badge.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{badge.description}</p>
                   </div>
                 ))}
               </div>

@@ -1,77 +1,191 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import dbConnect from '@/lib/db';
+import FinancialAccount from '@/models/FinancialAccount';
+import mongoose from 'mongoose';
 
-export async function GET(request: Request) {
+// GET - Fetch user accounts
+export async function GET(req: NextRequest) {
   try {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get('userId');
+    await dbConnect();
+    
+    // Get userId from query params
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('userId');
     
     if (!userId) {
       return NextResponse.json(
-        { success: false, message: "User ID is required" },
+        { success: false, message: 'User ID is required' },
         { status: 400 }
       );
     }
     
-    // In a real application, you would fetch accounts from a database
-    // For demo purposes, we'll return mock account data
-    const accounts = [
-      { 
-        id: "acc_" + Math.random().toString(36).substr(2, 9),
-        name: "Primary Savings", 
-        balance: "₹8,259.54", 
-        balanceRaw: 8259.54,
-        accountNumber: "XXXX4271", 
-        type: "Savings",
-        institution: "State Bank of India",
-        userId
-      },
-      { 
-        id: "acc_" + Math.random().toString(36).substr(2, 9),
-        name: "Fixed Deposit", 
-        balance: "₹12,500.00", 
-        balanceRaw: 12500.00,
-        accountNumber: "XXXX7824", 
-        type: "Deposit",
-        institution: "HDFC Bank",
-        userId
-      },
-      { 
-        id: "acc_" + Math.random().toString(36).substr(2, 9),
-        name: "Personal Loan", 
-        balance: "₹32,500.00 (due)", 
-        balanceRaw: -32500.00,
-        accountNumber: "XXXX3956", 
-        type: "Loan",
-        institution: "SBI Bank",
-        userId,
-        dueDate: "2023-05-15"
-      },
-    ];
-    
-    // Calculate total balance
-    const totalBalance = accounts.reduce((sum, account) => {
-      return sum + (account.balanceRaw || 0);
-    }, 0);
+    // Fetch accounts for user
+    const accounts = await FinancialAccount.find({ userId, isActive: true });
     
     return NextResponse.json({
       success: true,
-      accounts,
-      summary: {
-        totalBalance,
-        formattedTotalBalance: `₹${Math.abs(totalBalance).toLocaleString('en-IN', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        })}`,
-        netWorth: totalBalance > 0 ? totalBalance : 0,
-        totalDebt: totalBalance < 0 ? Math.abs(totalBalance) : 0,
-        accountCount: accounts.length
-      }
+      accounts
     });
     
   } catch (error) {
-    console.error("Error fetching accounts:", error);
+    console.error('Error fetching accounts:', error);
     return NextResponse.json(
-      { success: false, message: "An error occurred while fetching accounts" },
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - Create new account
+export async function POST(req: NextRequest) {
+  try {
+    await dbConnect();
+    
+    const body = await req.json();
+    const { 
+      userId, 
+      name, 
+      type, 
+      accountNumber, 
+      balance, 
+      currency, 
+      institution 
+    } = body;
+    
+    // Validate required fields
+    if (!userId || !name || !type || !accountNumber || !institution) {
+      return NextResponse.json(
+        { success: false, message: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+    
+    // Check if account with this number already exists
+    const existingAccount = await FinancialAccount.findOne({ accountNumber });
+    if (existingAccount) {
+      return NextResponse.json(
+        { success: false, message: 'Account with this number already exists' },
+        { status: 409 }
+      );
+    }
+    
+    // Create new account
+    const newAccount = await FinancialAccount.create({
+      userId,
+      name,
+      type,
+      accountNumber,
+      balance: balance || 0,
+      currency: currency || 'INR',
+      institution,
+      isActive: true,
+      isVerified: false
+    });
+    
+    return NextResponse.json(
+      { 
+        success: true, 
+        message: 'Account created successfully', 
+        account: newAccount 
+      },
+      { status: 201 }
+    );
+    
+  } catch (error) {
+    console.error('Error creating account:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT - Update account
+export async function PUT(req: NextRequest) {
+  try {
+    await dbConnect();
+    
+    const body = await req.json();
+    const { accountId, ...updateData } = body;
+    
+    if (!accountId) {
+      return NextResponse.json(
+        { success: false, message: 'Account ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Remove fields that shouldn't be updated directly
+    delete updateData.userId;
+    delete updateData.accountNumber;
+    
+    // Update the account
+    const updatedAccount = await FinancialAccount.findByIdAndUpdate(
+      accountId,
+      updateData,
+      { new: true }
+    );
+    
+    if (!updatedAccount) {
+      return NextResponse.json(
+        { success: false, message: 'Account not found' },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Account updated successfully',
+      account: updatedAccount
+    });
+    
+  } catch (error) {
+    console.error('Error updating account:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Deactivate an account
+export async function DELETE(req: NextRequest) {
+  try {
+    await dbConnect();
+    
+    const { searchParams } = new URL(req.url);
+    const accountId = searchParams.get('accountId');
+    
+    if (!accountId) {
+      return NextResponse.json(
+        { success: false, message: 'Account ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Instead of deleting, mark as inactive
+    const deactivatedAccount = await FinancialAccount.findByIdAndUpdate(
+      accountId,
+      { isActive: false },
+      { new: true }
+    );
+    
+    if (!deactivatedAccount) {
+      return NextResponse.json(
+        { success: false, message: 'Account not found' },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Account deactivated successfully'
+    });
+    
+  } catch (error) {
+    console.error('Error deactivating account:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }

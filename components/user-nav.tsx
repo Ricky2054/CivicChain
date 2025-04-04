@@ -16,17 +16,18 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Shield, User, Settings, KeyRound, LogOut, Loader2 } from "lucide-react"
-import { toast } from "@/components/ui/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 
 export function UserNav() {
   const router = useRouter()
+  const { toast } = useToast()
   const [userData, setUserData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   
   useEffect(() => {
     try {
       const userDataStr = localStorage.getItem("userData")
-      if (userDataStr) {
+      if (userDataStr && userDataStr !== "undefined") {
         setUserData(JSON.parse(userDataStr))
       }
     } catch (error) {
@@ -129,5 +130,12 @@ export function UserNav() {
       </DropdownMenuContent>
     </DropdownMenu>
   )
+}
+
+// For TypeScript global interface
+declare global {
+  interface Window {
+    updateLoginStatus?: () => void;
+  }
 }
 

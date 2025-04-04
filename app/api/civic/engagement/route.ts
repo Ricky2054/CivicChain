@@ -1,194 +1,413 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import dbConnect from '@/lib/db';
+import CivicEvent from '@/models/CivicEvent';
+import User from '@/models/User';
 
-export async function GET(request: Request) {
+// GET - Fetch civic engagement opportunities
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    await dbConnect();
+    
+    // Get userId from query params
+    const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
+    const category = searchParams.get('category');
+    const type = searchParams.get('type');
     
     if (!userId) {
       return NextResponse.json(
-        { error: 'userId is required' },
+        { success: false, message: 'User ID is required' },
         { status: 400 }
       );
     }
     
-    // In a real app, we would fetch from a database
-    // For demo, generate dynamic data based on userId
+    // Check if user exists
+    const user = await User.findOne({ id: userId });
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'User not found' },
+        { status: 404 }
+      );
+    }
     
-    // Use userId as seed for "randomness"
-    const seed = userId 
-      ? parseInt(userId.toString().split('').map(c => c.charCodeAt(0)).join('').slice(0, 5)) 
-      : Date.now();
-    const randomMultiplier = (seed % 10) / 10 + 0.5; // Range 0.5-1.4
+    // Build filter query
+    const query: any = { isActive: true };
+    if (category) query.category = category;
+    if (type) query.type = type;
     
-    // Calculate engagement stats with mathematical variations
-    const totalEngagements = Math.floor(48 * randomMultiplier);
-    const activitiesCompleted = Math.floor(36 * randomMultiplier);
-    const percentile = Math.min(98, Math.floor(75 + (seed % 25)));
-    const totalPoints = Math.floor(420 * randomMultiplier);
-    const level = Math.floor(4 + (totalPoints / 150)); // Level increases every 150 points
-    const nextLevelPoints = (level + 1) * 150;
-    const pointsToNextLevel = nextLevelPoints - totalPoints;
-    const progressPercent = Math.floor((totalPoints % 150) / 1.5); // 0-100 percentage to next level
+    // Fetch all active civic events
+    const opportunities = await CivicEvent.find(query);
     
-    // Current date for generating recent and upcoming activities
-    const now = new Date();
+    // Sort opportunities by startDate
+    opportunities.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
     
-    // Local events with mathematically derived properties
-    const localEvents = [
-      {
-        id: 1,
-        title: "Community Cleanup Drive",
-        description: "Join the community in cleaning up the local park and surrounding areas",
-        date: new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0], // 3 days from now
-        time: "09:00 AM - 12:00 PM",
-        location: "Central Park",
-        participants: Math.floor(42 * randomMultiplier),
-        maxParticipants: Math.floor(75 * randomMultiplier),
-        points: 50,
-        categories: ["Environment", "Community Service"],
-        isRegistered: Math.random() > 0.5
-      },
-      {
-        id: 2,
-        title: "Senior Citizens Health Camp",
-        description: "Volunteer at the health camp for senior citizens and help with basic health checkups",
-        date: new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0], // 7 days from now
-        time: "10:00 AM - 04:00 PM",
-        location: "Community Center",
-        participants: Math.floor(28 * randomMultiplier),
-        maxParticipants: Math.floor(50 * randomMultiplier),
-        points: 75,
-        categories: ["Healthcare", "Elderly Care"],
-        isRegistered: Math.random() > 0.7
-      },
-      {
-        id: 3,
-        title: "Digital Literacy Workshop",
-        description: "Teach basic digital skills to underserved community members",
-        date: new Date(now.getTime() + (14 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0], // 14 days from now
-        time: "02:00 PM - 05:00 PM",
-        location: "Public Library",
-        participants: Math.floor(18 * randomMultiplier),
-        maxParticipants: Math.floor(30 * randomMultiplier),
-        points: 60,
-        categories: ["Education", "Digital Inclusion"],
-        isRegistered: false
+    // Add registration status for each event
+    const processedOpportunities = opportunities.map(event => {
+      const registration = event.participants?.find(
+        p => p.userId === userId
+      );
+      
+      return {
+        ...event,
+        isRegistered: !!registration,
+        registrationStatus: registration ? registration.status : null
+      };
+    });
+    
+    // Calculate user engagement stats
+    const userEvents = await CivicEvent.find({
+      participants: {
+        $elemMatch: {
+          userId: userId,
+          status: { $in: ['completed', 'attended'] }
+        }
       }
-    ];
+    });
     
-    // Online events
-    const onlineEvents = [
-      {
-        id: 4,
-        title: "Civic Tech Hackathon",
-        description: "Participate in developing technology solutions for civic problems",
-        date: new Date(now.getTime() + (10 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0], // 10 days from now
-        time: "09:00 AM - 06:00 PM",
-        platform: "Zoom & GitHub",
-        participants: Math.floor(120 * randomMultiplier),
-        maxParticipants: Math.floor(200 * randomMultiplier),
-        points: 100,
-        categories: ["Technology", "Innovation"],
-        isRegistered: Math.random() > 0.6
-      },
-      {
-        id: 5,
-        title: "Policy Feedback Session",
-        description: "Provide feedback on proposed local policies and initiatives",
-        date: new Date(now.getTime() + (5 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0], // 5 days from now
-        time: "07:00 PM - 08:30 PM",
-        platform: "Google Meet",
-        participants: Math.floor(65 * randomMultiplier),
-        maxParticipants: Math.floor(100 * randomMultiplier),
-        points: 40,
-        categories: ["Governance", "Policy"],
-        isRegistered: Math.random() > 0.4
-      }
-    ];
+    const totalPoints = userEvents.reduce((sum, event) => sum + (event.points || 0), 0);
+    const activitiesCompleted = userEvents.length;
     
-    // Completed activities with mathematical patterns
-    const daysAgo = (days) => new Date(now.getTime() - (days * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
+    // Get this month's activities
+    const thisMonth = new Date();
+    thisMonth.setDate(1);
+    thisMonth.setHours(0, 0, 0, 0);
     
-    const completedActivities = [
-      {
-        id: 101,
-        title: "Neighborhood Watch Meeting",
-        date: daysAgo(Math.floor(5 + (seed % 10))),
-        points: 30,
-        impact: "Helped increase community safety awareness"
-      },
-      {
-        id: 102,
-        title: "Tree Planting Initiative",
-        date: daysAgo(Math.floor(12 + (seed % 15))),
-        points: 50,
-        impact: "Contributed to planting 15 trees in the local area"
-      },
-      {
-        id: 103,
-        title: "Voter Registration Drive",
-        date: daysAgo(Math.floor(20 + (seed % 20))),
-        points: 45,
-        impact: "Helped register 23 new voters"
-      },
-      {
-        id: 104,
-        title: "Local School Volunteer Program",
-        date: daysAgo(Math.floor(30 + (seed % 25))),
-        points: 60,
-        impact: "Assisted in after-school programs for underprivileged children"
-      }
-    ];
+    const thisMonthEvents = userEvents.filter(event => 
+      event.participants.some(p => 
+        p.userId === userId && 
+        new Date(p.registrationDate) >= thisMonth
+      )
+    );
     
-    // Categorize points (with mathematically consistent sums)
-    const pointCategories = [
-      { name: "Environment", points: Math.floor(totalPoints * 0.25) },
-      { name: "Education", points: Math.floor(totalPoints * 0.2) },
-      { name: "Healthcare", points: Math.floor(totalPoints * 0.15) },
-      { name: "Community Service", points: Math.floor(totalPoints * 0.3) },
-      { name: "Governance", points: Math.floor(totalPoints * 0.1) }
-    ];
+    // Get user's position in leaderboard (simplified)
+    const allUsers = await User.find({}, { id: 1, name: 1, socialCredit: 1 });
     
-    // Calculate total again to ensure it matches after floor operations
-    let recalculatedTotal = pointCategories.reduce((sum, cat) => sum + cat.points, 0);
+    // Sort users by socialCredit score
+    allUsers.sort((a, b) => (b.socialCredit?.score || 0) - (a.socialCredit?.score || 0));
     
-    // Adjust first category to ensure the total is correct (account for rounding)
-    pointCategories[0].points += (totalPoints - recalculatedTotal);
+    const userRank = allUsers.findIndex(u => u.id === userId) + 1;
     
-    // Badges earned
-    const badges = [
-      { name: "Environmental Protector", level: Math.floor(2 + (seed % 3)), points: pointCategories[0].points },
-      { name: "Education Advocate", level: Math.floor(1 + (seed % 3)), points: pointCategories[1].points },
-      { name: "Community Builder", level: Math.floor(3 + (seed % 3)), points: pointCategories[3].points }
-    ];
-    
-    const engagementData = {
-      userStats: {
-        totalEngagements,
-        activitiesCompleted,
-        totalPoints,
-        percentile,
-        level,
-        pointsToNextLevel,
-        progressPercent
-      },
-      events: {
-        local: localEvents,
-        online: onlineEvents
-      },
-      completedActivities,
-      pointCategories,
-      badges
+    const userStats = {
+      totalPoints,
+      activitiesCompleted,
+      activitiesThisMonth: thisMonthEvents.length,
+      level: Math.floor(totalPoints / 100) + 1,
+      levelTitle: getLevelTitle(Math.floor(totalPoints / 100) + 1),
+      progressPercent: (totalPoints % 100),
+      pointsToNextLevel: 100 - (totalPoints % 100),
+      communityRank: userRank,
+      totalParticipants: allUsers.length,
+      rankChange: Math.floor(Math.random() * 5) + 1 // Mock data for demo
     };
     
-    return NextResponse.json(engagementData);
-  } catch (error) {
-    console.error("Error in civic engagement API:", error);
+    return NextResponse.json({
+      success: true,
+      opportunities: processedOpportunities,
+      userStats
+    });
     
+  } catch (error) {
+    console.error('Error fetching engagement data:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }
+}
+
+// POST - Register for an event or create an event
+export async function POST(req: NextRequest) {
+  try {
+    await dbConnect();
+    
+    const body = await req.json();
+    
+    // If eventId is present, this is a registration request
+    if (body.eventId) {
+      const { userId, eventId } = body;
+      
+      if (!userId || !eventId) {
+        return NextResponse.json(
+          { success: false, message: 'User ID and Event ID are required' },
+          { status: 400 }
+        );
+      }
+      
+      // Find the event
+      const event = await CivicEvent.findOne({ id: eventId });
+      if (!event) {
+        return NextResponse.json(
+          { success: false, message: 'Event not found' },
+          { status: 404 }
+        );
+      }
+      
+      // Check if already registered
+      const alreadyRegistered = event.participants?.some(
+        p => p.userId === userId
+      );
+      
+      if (alreadyRegistered) {
+        return NextResponse.json(
+          { success: false, message: 'Already registered for this event' },
+          { status: 409 }
+        );
+      }
+      
+      // Check if max participants reached
+      if (event.maxParticipants && event.currentParticipants >= event.maxParticipants) {
+        return NextResponse.json(
+          { success: false, message: 'Event has reached maximum participants' },
+          { status: 409 }
+        );
+      }
+      
+      // Ensure participants array exists
+      if (!event.participants) {
+        event.participants = [];
+      }
+      
+      // Register user for the event
+      event.participants.push({
+        userId,
+        status: 'registered',
+        registrationDate: new Date().toISOString()
+      });
+      
+      // Increment participant count
+      event.currentParticipants = (event.currentParticipants || 0) + 1;
+      
+      await CivicEvent.update({ id: eventId }, event);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Successfully registered for the event',
+        event
+      });
+      
+    } else {
+      // This is a new event creation request
+      const { 
+        title, 
+        description, 
+        category, 
+        type, 
+        location, 
+        organizer, 
+        startDate,
+        endDate,
+        points,
+        maxParticipants,
+        image
+      } = body;
+      
+      // Validate required fields
+      if (!title || !description || !category || !type || !organizer || !startDate || !endDate || !points) {
+        return NextResponse.json(
+          { success: false, message: 'Missing required fields' },
+          { status: 400 }
+        );
+      }
+      
+      // Create new event
+      const newEvent = {
+        id: Date.now().toString(), // Create a unique ID
+        title,
+        description,
+        category,
+        type,
+        location: location || null,
+        organizer,
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        points,
+        maxParticipants: maxParticipants || null,
+        currentParticipants: 0,
+        image: image || null,
+        isActive: true,
+        participants: []
+      };
+      
+      await CivicEvent.create(newEvent);
+      
+      return NextResponse.json(
+        {
+          success: true,
+          message: 'Event created successfully',
+          event: newEvent
+        },
+        { status: 201 }
+      );
+    }
+    
+  } catch (error) {
+    console.error('Error processing civic event request:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT - Update event status or participant status
+export async function PUT(req: NextRequest) {
+  try {
+    await dbConnect();
+    
+    const body = await req.json();
+    const { eventId, userId, participantStatus, eventStatus } = body;
+    
+    if (!eventId) {
+      return NextResponse.json(
+        { success: false, message: 'Event ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Find the event
+    const event = await CivicEvent.findOne({ id: eventId });
+    if (!event) {
+      return NextResponse.json(
+        { success: false, message: 'Event not found' },
+        { status: 404 }
+      );
+    }
+    
+    // If updating participant status
+    if (userId && participantStatus) {
+      if (!event.participants) {
+        return NextResponse.json(
+          { success: false, message: 'No participants found for this event' },
+          { status: 404 }
+        );
+      }
+      
+      const participantIndex = event.participants.findIndex(p => p.userId === userId);
+      
+      if (participantIndex === -1) {
+        return NextResponse.json(
+          { success: false, message: 'User not registered for this event' },
+          { status: 404 }
+        );
+      }
+      
+      // Update the participant status
+      event.participants[participantIndex].status = participantStatus;
+      
+      // If the participant has completed the event, update social credit score
+      if (participantStatus === 'completed' || participantStatus === 'attended') {
+        // Find the user
+        const user = await User.findOne({ id: userId });
+        
+        if (user && user.socialCredit) {
+          // Update civic category score and overall score
+          user.socialCredit.categories.civic += Math.min(10, event.points / 10);
+          user.socialCredit.score += event.points;
+          user.socialCredit.lastUpdated = new Date().toISOString();
+          
+          // Keep scores within bounds
+          if (user.socialCredit.categories.civic > 100) {
+            user.socialCredit.categories.civic = 100;
+          }
+          
+          await User.update({ id: userId }, user);
+        }
+      }
+      
+      await CivicEvent.update({ id: eventId }, event);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Participant status updated successfully',
+        event
+      });
+    }
+    
+    // If updating event status
+    if (eventStatus !== undefined) {
+      event.isActive = eventStatus;
+      
+      await CivicEvent.update({ id: eventId }, event);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Event status updated successfully',
+        event
+      });
+    }
+    
+    return NextResponse.json(
+      { success: false, message: 'No update parameters provided' },
+      { status: 400 }
+    );
+    
+  } catch (error) {
+    console.error('Error updating event:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Remove an event
+export async function DELETE(req: NextRequest) {
+  try {
+    await dbConnect();
+    
+    const { searchParams } = new URL(req.url);
+    const eventId = searchParams.get('eventId');
+    
+    if (!eventId) {
+      return NextResponse.json(
+        { success: false, message: 'Event ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Instead of delete, set to inactive (soft delete)
+    const event = await CivicEvent.findOne({ id: eventId });
+    
+    if (!event) {
+      return NextResponse.json(
+        { success: false, message: 'Event not found' },
+        { status: 404 }
+      );
+    }
+    
+    event.isActive = false;
+    
+    await CivicEvent.update({ id: eventId }, event);
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Event successfully deactivated'
+    });
+    
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+function getLevelTitle(level: number): string {
+  const titles = [
+    'Civic Novice',
+    'Engaged Citizen',
+    'Community Contributor',
+    'Civic Leader',
+    'Community Champion',
+    'Civic Hero',
+    'Social Impact Maker',
+    'Community Pillar',
+    'Civic Visionary',
+    'Legendary Citizen'
+  ];
+  
+  if (level <= 0) return titles[0];
+  if (level > titles.length) return titles[titles.length - 1];
+  return titles[level - 1];
 } 

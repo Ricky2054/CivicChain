@@ -1,24 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { DashboardShell } from "@/components/dashboard-shell"
-import { DashboardHeader } from "@/components/dashboard-header"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2, CheckCircle, XCircle, AlertTriangle } from "lucide-react"
-
-// Define all API endpoints to test
-const API_ENDPOINTS = [
-  { name: "Finance Accounts", url: "/api/finance/accounts", params: { userId: "test-user-id" } },
-  { name: "Finance Transactions", url: "/api/finance/transactions", params: { userId: "test-user-id", limit: 5, offset: 0 } },
-  { name: "Finance Opportunities", url: "/api/finance/opportunities", params: { userId: "test-user-id" } },
-  { name: "Civic Social Credit", url: "/api/civic/social-credit", params: { userId: "test-user-id" } },
-  { name: "Civic Engagement", url: "/api/civic/engagement", params: { userId: "test-user-id" } },
-  { name: "Community Staking", url: "/api/community/staking", params: { userId: "test-user-id" } },
-  { name: "Community Leaderboard", url: "/api/community/leaderboard", params: {} },
-]
+import { Progress } from "@/components/ui/progress"
+import apiService from "@/lib/api-service"
+import { CheckCircle, XCircle, AlertCircle, PlayCircle, Clock, RefreshCw } from "lucide-react"
 
 interface ApiTestResult {
   endpoint: string
@@ -28,455 +18,644 @@ interface ApiTestResult {
   error?: string
 }
 
+// Group API endpoints by category
+const API_ENDPOINTS = {
+  auth: ["login", "register"],
+  finance: ["accounts", "transactions", "opportunities"],
+  civic: ["social-credit", "engagement"],
+  community: ["staking", "leaderboard"]
+}
+
 export default function ApiTestPage() {
-  const [results, setResults] = useState<ApiTestResult[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<string>("summary")
+  const [results, setResults] = useState<Record<string, ApiTestResult>>({})
+  const [activeTab, setActiveTab] = useState<string>("auth")
+  const [isTestingAll, setIsTestingAll] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [apiBaseUrl, setApiBaseUrl] = useState<string>("")
   
-  // Test a single API endpoint
-  const testEndpoint = async (endpoint: typeof API_ENDPOINTS[0]): Promise<ApiTestResult> => {
-    const startTime = performance.now()
+  useEffect(() => {
+    // Set the API base URL
+    setApiBaseUrl(window.location.origin)
+    
+    // Try to get a user ID from localStorage for testing
     try {
-      // Build URL with query parameters
-      const queryParams = new URLSearchParams(endpoint.params).toString()
-      const url = `${endpoint.url}?${queryParams}`
-      
-      const response = await fetch(url)
-      const endTime = performance.now()
-      
-      if (!response.ok) {
-        return {
-          endpoint: endpoint.name,
-          status: "error",
-          responseTime: Math.round(endTime - startTime),
-          data: null,
-          error: `Status: ${response.status} ${response.statusText}`
+      const userDataStr = localStorage.getItem("userData")
+      if (userDataStr && userDataStr !== "undefined") {
+        const userData = JSON.parse(userDataStr)
+        if (userData && userData.id) {
+          setUserId(userData.id)
         }
-      }
-      
-      const data = await response.json()
-      return {
-        endpoint: endpoint.name,
-        status: "success",
-        responseTime: Math.round(endTime - startTime),
-        data
+      } else {
+        // Use a default user ID for testing when no user is logged in
+        setUserId("test-user-123")
       }
     } catch (error) {
-      const endTime = performance.now()
-      return {
-        endpoint: endpoint.name,
-        status: "error",
-        responseTime: Math.round(endTime - startTime),
-        data: null,
-        error: error instanceof Error ? error.message : String(error)
+      console.error("Error getting user ID:", error)
+      // Use a default user ID for testing when there's an error
+      setUserId("test-user-123")
+    }
+  }, [])
+  
+  // Run a single test and update the results
+  const runTest = async (testName: string, testFunction: () => Promise<any>) => {
+    // Set the test to pending
+    setResults((prev) => ({
+      ...prev,
+      [testName]: {
+        endpoint: testName,
+        status: "pending",
+        responseTime: 0,
+        data: null
       }
+    }))
+    
+    try {
+      const startTime = performance.now()
+      const response = await testFunction()
+      const endTime = performance.now()
+      
+      setResults((prev) => ({
+        ...prev,
+        [testName]: {
+          endpoint: testName,
+          status: "success",
+          responseTime: Math.round(endTime - startTime),
+          data: response
+        }
+      }))
+    } catch (error) {
+      console.error(`Error testing ${testName}:`, error)
+      
+      setResults((prev) => ({
+        ...prev,
+        [testName]: {
+          endpoint: testName,
+          status: "error",
+          responseTime: 0,
+          data: null,
+          error: error instanceof Error ? error.message : String(error)
+        }
+      }))
     }
   }
   
-  // Run all API tests
+  // Run all tests in sequence
   const runAllTests = async () => {
-    setIsLoading(true)
-    setResults(API_ENDPOINTS.map(endpoint => ({
-      endpoint: endpoint.name,
-      status: "pending",
-      responseTime: 0,
-      data: null
-    })))
+    setIsTestingAll(true)
     
-    const testResults = await Promise.all(
-      API_ENDPOINTS.map(endpoint => testEndpoint(endpoint))
-    )
+    await testLogin()
+    await testRegister()
+    await testFinanceAccounts()
+    await testFinanceTransactions()
+    await testFinanceOpportunities()
+    await testSocialCredit()
+    await testCivicEngagement()
+    await testCommunityStaking()
+    await testCommunityLeaderboard()
     
-    setResults(testResults)
-    setIsLoading(false)
+    setIsTestingAll(false)
   }
   
-  // Get status summary
-  const getSummary = () => {
-    const totalTests = results.length
-    const successful = results.filter(r => r.status === "success").length
-    const failed = results.filter(r => r.status === "error").length
-    const pending = results.filter(r => r.status === "pending").length
-    
-    return { totalTests, successful, failed, pending }
+  // Individual test functions
+  const testLogin = async () => {
+    return runTest("login", async () => {
+      return await apiService.auth.login("test@example.com", "password")
+    })
   }
   
-  // Get status badge
-  const getStatusBadge = (status: ApiTestResult["status"]) => {
+  const testRegister = async () => {
+    return runTest("register", async () => {
+      return await apiService.auth.register({
+        name: "Test User",
+        email: "new@example.com",
+        phone: "+91 98765 43210",
+        password: "password",
+        aadhaarNumber: "123456789012"
+      })
+    })
+  }
+  
+  const testFinanceAccounts = async () => {
+    return runTest("accounts", async () => {
+      return await apiService.finance.getAccounts(userId || "user-123")
+    })
+  }
+  
+  const testFinanceTransactions = async () => {
+    return runTest("transactions", async () => {
+      return await apiService.finance.getTransactions(userId || "user-123")
+    })
+  }
+  
+  const testFinanceOpportunities = async () => {
+    return runTest("opportunities", async () => {
+      return await apiService.finance.getOpportunities(userId || "user-123")
+    })
+  }
+  
+  const testSocialCredit = async () => {
+    return runTest("social-credit", async () => {
+      return await apiService.user.getSocialCredit(userId || "user-123")
+    })
+  }
+  
+  const testCivicEngagement = async () => {
+    return runTest("engagement", async () => {
+      return await apiService.civic.getEngagement(userId || "user-123")
+    })
+  }
+  
+  const testCommunityStaking = async () => {
+    return runTest("staking", async () => {
+      return await apiService.community.getStaking(userId || "user-123")
+    })
+  }
+  
+  const testCommunityLeaderboard = async () => {
+    return runTest("leaderboard", async () => {
+      return await apiService.community.getLeaderboard()
+    })
+  }
+  
+  // Helper to display status badge
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case "success":
-        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> Success</Badge>
+        return (
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-300">
+            <CheckCircle className="mr-1 h-3 w-3" />
+            Success
+          </Badge>
+        )
       case "error":
-        return <Badge className="bg-red-500"><XCircle className="h-3 w-3 mr-1" /> Error</Badge>
+        return (
+          <Badge variant="destructive">
+            <XCircle className="mr-1 h-3 w-3" />
+            Error
+          </Badge>
+        )
       case "pending":
-        return <Badge className="bg-yellow-500"><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Testing</Badge>
+        return (
+          <Badge variant="outline" className="animate-pulse">
+            <Clock className="mr-1 h-3 w-3" />
+            Pending
+          </Badge>
+        )
       default:
-        return <Badge variant="outline"><AlertTriangle className="h-3 w-3 mr-1" /> Not Tested</Badge>
-    }
-  }
-  
-  // Format JSON for display
-  const formatJSON = (data: any) => {
-    try {
-      return JSON.stringify(data, null, 2)
-    } catch (e) {
-      return "Unable to format data"
+        return (
+          <Badge variant="outline">
+            <AlertCircle className="mr-1 h-3 w-3" />
+            Not Tested
+          </Badge>
+        )
     }
   }
   
   return (
-    <DashboardShell>
-      <DashboardHeader
-        heading="API Test Suite"
-        text="Test and monitor all API endpoints in one place"
-      />
-      
-      <div className="flex items-center justify-between mb-4">
-        <div className="space-x-2">
-          <Button onClick={runAllTests} disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Running Tests
-              </>
-            ) : (
-              "Run All Tests"
-            )}
-          </Button>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {results.length > 0 && (
+    <div className="container mx-auto py-10">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">API Endpoint Tester</h1>
+        <Button 
+          onClick={runAllTests} 
+          disabled={isTestingAll}
+          className="flex items-center gap-2"
+        >
+          {isTestingAll ? (
             <>
-              <Badge variant="outline" className="gap-1">
-                Total: {getSummary().totalTests}
-              </Badge>
-              <Badge variant="outline" className="bg-green-500/10 text-green-600 gap-1">
-                <CheckCircle className="h-3 w-3" /> {getSummary().successful}
-              </Badge>
-              <Badge variant="outline" className="bg-red-500/10 text-red-600 gap-1">
-                <XCircle className="h-3 w-3" /> {getSummary().failed}
-              </Badge>
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Testing All Endpoints...
+            </>
+          ) : (
+            <>
+              <PlayCircle className="h-4 w-4" />
+              Test All Endpoints
             </>
           )}
+        </Button>
+      </div>
+      
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Test Configuration</CardTitle>
+          <CardDescription>Settings for API testing</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div>
+              <p className="text-sm font-medium">User ID for Testing</p>
+              <p className="text-sm text-muted-foreground">
+                {userId || "No user ID found in localStorage. Using default 'test-user-123'."}
+              </p>
+            </div>
+            
+            <div>
+              <p className="text-sm font-medium">API Base URL</p>
+              <p className="text-sm text-muted-foreground">{apiBaseUrl || "Loading..."}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <div className="grid gap-6 md:grid-cols-4">
+        <div>
+          <h2 className="text-lg font-semibold mb-2">API Categories</h2>
+          <div className="space-y-2">
+            {Object.keys(API_ENDPOINTS).map((category) => {
+              // Calculate success rate for category
+              const endpoints = API_ENDPOINTS[category as keyof typeof API_ENDPOINTS]
+              const testedCount = endpoints.filter(
+                endpoint => results[endpoint]?.status === "success" || results[endpoint]?.status === "error"
+              ).length
+              const successCount = endpoints.filter(
+                endpoint => results[endpoint]?.status === "success"
+              ).length
+              
+              const progressPercent = testedCount > 0 
+                ? Math.round((successCount / testedCount) * 100) 
+                : 0
+              
+              return (
+                <Card 
+                  key={category}
+                  className={`cursor-pointer hover:bg-muted/50 ${activeTab === category ? 'border-primary' : ''}`} 
+                  onClick={() => setActiveTab(category)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-medium capitalize">{category}</p>
+                      <Badge variant="outline">
+                        {successCount}/{endpoints.length}
+                      </Badge>
+                    </div>
+                    <Progress value={progressPercent} className="h-1" />
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+        
+        <div className="md:col-span-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="capitalize">{activeTab} API Endpoints</CardTitle>
+              <CardDescription>
+                Test and view results for {activeTab} services
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {API_ENDPOINTS[activeTab as keyof typeof API_ENDPOINTS].map((endpoint) => {
+                  const result = results[endpoint] || {
+                    endpoint,
+                    status: "not-tested",
+                    responseTime: 0,
+                    data: null
+                  }
+                  
+                  // Determine which test function to use
+                  let testFunction
+                  switch (endpoint) {
+                    case "login":
+                      testFunction = testLogin
+                      break
+                    case "register":
+                      testFunction = testRegister
+                      break
+                    case "accounts":
+                      testFunction = testFinanceAccounts
+                      break
+                    case "transactions":
+                      testFunction = testFinanceTransactions
+                      break
+                    case "opportunities":
+                      testFunction = testFinanceOpportunities
+                      break
+                    case "social-credit":
+                      testFunction = testSocialCredit
+                      break
+                    case "engagement":
+                      testFunction = testCivicEngagement
+                      break
+                    case "staking":
+                      testFunction = testCommunityStaking
+                      break
+                    case "leaderboard":
+                      testFunction = testCommunityLeaderboard
+                      break
+                  }
+                  
+                  return (
+                    <div key={endpoint} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <h3 className="font-medium">{endpoint}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Endpoint: /api/{activeTab}/{endpoint}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {result.status === "success" && (
+                            <Badge variant="outline" className="bg-muted">
+                              {result.responseTime}ms
+                            </Badge>
+                          )}
+                          {getStatusBadge(result.status)}
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-end mt-2">
+                        <Button 
+                          size="sm" 
+                          onClick={testFunction}
+                          disabled={result.status === "pending" || isTestingAll}
+                        >
+                          {result.status === "pending" ? (
+                            <>
+                              <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
+                              Testing...
+                            </>
+                          ) : (
+                            <>
+                              <PlayCircle className="mr-2 h-3 w-3" />
+                              Test Endpoint
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      
+                      {(result.status === "success" || result.status === "error") && (
+                        <div className="mt-4">
+                          <p className="text-sm font-medium mb-1">
+                            {result.status === "success" ? "Response" : "Error"}:
+                          </p>
+                          <ScrollArea className="h-48 rounded-md border p-2">
+                            <pre className="text-xs">
+                              {result.status === "success" 
+                                ? JSON.stringify(result.data, null, 2) 
+                                : result.error
+                              }
+                            </pre>
+                          </ScrollArea>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="summary">Summary</TabsTrigger>
-          <TabsTrigger value="results">Detailed Results</TabsTrigger>
-          <TabsTrigger value="metamask">MetaMask Integration</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="summary">
-          <Card>
-            <CardHeader>
-              <CardTitle>API Status Overview</CardTitle>
-              <CardDescription>Status of all API endpoints</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {results.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground">
-                  No tests have been run yet. Click "Run All Tests" to begin.
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {results.map((result) => (
-                    <div key={result.endpoint} className="flex items-center justify-between p-2 rounded-md border">
-                      <div>
-                        <div className="font-medium">{result.endpoint}</div>
-                        {result.error && (
-                          <div className="text-xs text-red-500 mt-1">{result.error}</div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {result.status === "success" && (
-                          <div className="text-xs text-muted-foreground">
-                            {result.responseTime}ms
-                          </div>
-                        )}
-                        {getStatusBadge(result.status)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="results">
-          <div className="space-y-4">
-            {results.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-8 text-muted-foreground">
-                  No tests have been run yet. Click "Run All Tests" to begin.
-                </CardContent>
-              </Card>
-            ) : (
-              results.map((result) => (
-                <Card key={result.endpoint}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle>{result.endpoint}</CardTitle>
-                      {getStatusBadge(result.status)}
-                    </div>
-                    <CardDescription>
-                      Response time: {result.responseTime}ms
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {result.error ? (
-                      <div className="p-4 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 rounded-md">
-                        <div className="font-medium">Error:</div>
-                        <div className="text-sm">{result.error}</div>
-                      </div>
-                    ) : (
-                      <pre className="p-4 bg-muted rounded-md overflow-auto text-xs">
-                        {formatJSON(result.data)}
-                      </pre>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="metamask">
-          <MetaMaskIntegration />
-        </TabsContent>
-      </Tabs>
-    </DashboardShell>
+      <div className="mt-8">
+        <h2 className="text-lg font-semibold mb-2">MetaMask Integration Test</h2>
+        <Card>
+          <CardContent className="p-6">
+            <MetaMaskIntegration />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }
 
 function MetaMaskIntegration() {
-  const [hasMetaMask, setHasMetaMask] = useState<boolean | null>(null)
-  const [account, setAccount] = useState<string | null>(null)
+  const [isMetaMaskInstalled, setIsMetaMaskInstalled] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
+  const [accountAddress, setAccountAddress] = useState<string | null>(null)
+  const [chainId, setChainId] = useState<string | null>(null)
+  const [networkName, setNetworkName] = useState<string>("")
   const [balance, setBalance] = useState<string | null>(null)
-  const [network, setNetwork] = useState<string | null>(null)
-  const [connected, setConnected] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   
   useEffect(() => {
+    setIsMounted(true)
+    
+    // Only run after component is mounted to avoid SSR issues
+    if (typeof window !== 'undefined') {
+      checkMetaMask()
+    }
+  }, [])
+  
+  const checkMetaMask = async () => {
     // Check if MetaMask is installed
-    const checkMetaMask = async () => {
-      if (typeof window !== 'undefined' && window.ethereum) {
-        setHasMetaMask(true)
+    if (typeof window !== 'undefined') {
+      const { ethereum } = window as any
+      
+      if (ethereum && ethereum.isMetaMask) {
+        setIsMetaMaskInstalled(true)
         
         // Listen for account changes
-        window.ethereum.on('accountsChanged', (accounts: string[]) => {
-          setAccount(accounts[0] || null)
-          if (accounts.length === 0) {
-            setConnected(false)
-            setBalance(null)
-          } else if (connected) {
+        ethereum.on('accountsChanged', (accounts: string[]) => {
+          if (accounts.length > 0) {
+            setAccountAddress(accounts[0])
             fetchBalance(accounts[0])
+          } else {
+            setIsConnected(false)
+            setAccountAddress(null)
+            setBalance(null)
           }
         })
         
         // Listen for chain changes
-        window.ethereum.on('chainChanged', () => {
-          window.location.reload()
+        ethereum.on('chainChanged', (newChainId: string) => {
+          setChainId(newChainId)
+          setNetworkName(getNetworkName(newChainId))
         })
         
-        // Get current network
+        // Check if already connected
         try {
-          const chainId = await window.ethereum.request({ method: 'eth_chainId' })
-          setNetworkName(chainId)
+          const accounts = await ethereum.request({ method: 'eth_accounts' })
+          if (accounts.length > 0) {
+            setIsConnected(true)
+            setAccountAddress(accounts[0])
+            
+            const chainId = await ethereum.request({ method: 'eth_chainId' })
+            setChainId(chainId)
+            setNetworkName(getNetworkName(chainId))
+            
+            fetchBalance(accounts[0])
+          }
         } catch (error) {
-          console.error("Error getting chain ID:", error)
+          console.error('Error checking MetaMask connection:', error)
         }
-      } else {
-        setHasMetaMask(false)
       }
     }
-    
-    checkMetaMask()
-  }, [])
+  }
   
-  const setNetworkName = (chainId: string) => {
-    const networks: {[key: string]: string} = {
-      '0x1': 'Ethereum Mainnet',
-      '0x5': 'Goerli Testnet',
-      '0xaa36a7': 'Sepolia Testnet',
-      '0x89': 'Polygon Mainnet',
-      '0x13881': 'Mumbai Testnet',
+  const getNetworkName = (chainId: string) => {
+    switch (chainId) {
+      case '0x1':
+        return 'Ethereum Mainnet'
+      case '0x5':
+        return 'Goerli Testnet'
+      case '0xaa36a7':
+        return 'Sepolia Testnet'
+      case '0x89':
+        return 'Polygon Mainnet'
+      case '0x13881':
+        return 'Mumbai Testnet'
+      default:
+        return `Unknown Network (${chainId})`
     }
-    
-    setNetwork(networks[chainId] || `Chain ID: ${chainId}`)
   }
   
   const connectMetaMask = async () => {
-    if (!window.ethereum) return
-    
-    setIsLoading(true)
     try {
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
-      setAccount(accounts[0])
-      setConnected(true)
-      await fetchBalance(accounts[0])
+      if (typeof window === 'undefined') return
       
-      // Get current chain
-      const chainId = await window.ethereum.request({ method: 'eth_chainId' })
-      setNetworkName(chainId)
-    } catch (error) {
-      console.error("Error connecting to MetaMask:", error)
-    } finally {
-      setIsLoading(false)
+      const { ethereum } = window as any
+      
+      if (ethereum) {
+        const accounts = await ethereum.request({ method: 'eth_requestAccounts' })
+        
+        if (accounts.length > 0) {
+          setIsConnected(true)
+          setAccountAddress(accounts[0])
+          
+          const chainId = await ethereum.request({ method: 'eth_chainId' })
+          setChainId(chainId)
+          setNetworkName(getNetworkName(chainId))
+          
+          fetchBalance(accounts[0])
+        }
+      } else {
+        alert('Please install MetaMask to connect!')
+      }
+    } catch (error: any) {
+      console.error('Error connecting to MetaMask:', error?.message || 'Unknown error')
+      
+      // Handle common MetaMask errors with user-friendly messages
+      if (error?.code === 4001) {
+        // User rejected the request
+        alert('Connection rejected. Please approve the MetaMask connection request to continue.')
+      } else if (error?.code === -32002) {
+        // Request already pending
+        alert('A connection request is already pending. Please check your MetaMask extension.')
+      } else {
+        // Generic error
+        alert(`Failed to connect to MetaMask: ${error?.message || 'Unknown error'}`)
+      }
     }
   }
   
   const fetchBalance = async (address: string) => {
+    if (typeof window === 'undefined') return
+    
     try {
-      const balanceHex = await window.ethereum.request({ 
-        method: 'eth_getBalance',
-        params: [address, 'latest']
-      })
+      const { ethereum } = window as any
       
-      // Convert from wei to ether
-      const balanceInWei = parseInt(balanceHex, 16)
-      const balanceInEther = balanceInWei / 1e18
-      setBalance(balanceInEther.toFixed(4))
+      if (ethereum) {
+        const balance = await ethereum.request({
+          method: 'eth_getBalance',
+          params: [address, 'latest']
+        })
+        
+        // Convert from wei to eth
+        const ethBalance = parseInt(balance, 16) / 1e18
+        setBalance(ethBalance.toFixed(4))
+      }
     } catch (error) {
-      console.error("Error fetching balance:", error)
+      console.error('Error fetching balance:', error)
+      setBalance(null)
     }
   }
   
-  // Helper to format ethereum addresses
   const formatAddress = (address: string | null) => {
     if (!address) return ''
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`
   }
   
-  if (hasMetaMask === null) {
+  // If not mounted yet (during SSR), show a loading state
+  if (!isMounted) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
-    )
-  }
-  
-  if (hasMetaMask === false) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>MetaMask Not Installed</CardTitle>
-          <CardDescription>Please install MetaMask to use blockchain features</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center p-4 space-y-4">
-            <AlertTriangle className="h-16 w-16 text-yellow-500" />
-            <p>MetaMask is required for blockchain functionality in CivicChain Finance.</p>
-            <Button asChild>
-              <a 
-                href="https://metamask.io/download/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-              >
-                Install MetaMask
-              </a>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium">MetaMask Status</h3>
+          <Badge variant="outline">
+            <Clock className="mr-1 h-3 w-3 animate-pulse" />
+            Loading...
+          </Badge>
+        </div>
+      </div>
     )
   }
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>MetaMask Integration</CardTitle>
-        <CardDescription>Connect your Ethereum wallet to access blockchain features</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          {!connected ? (
-            <div className="flex flex-col items-center justify-center p-4 space-y-4">
-              <img 
-                src="/metamask-fox.svg" 
-                alt="MetaMask Logo" 
-                className="h-24 w-24" 
-                onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = 'https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg';
-                }}
-              />
-              <p className="text-center">Connect your MetaMask wallet to access CivicChain Finance blockchain features</p>
-              <Button onClick={connectMetaMask} disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Connecting...
-                  </>
-                ) : (
-                  "Connect MetaMask"
-                )}
-              </Button>
-            </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-medium">MetaMask Status</h3>
+        {isMetaMaskInstalled ? (
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-300">
+            <CheckCircle className="mr-1 h-3 w-3" />
+            Installed
+          </Badge>
+        ) : (
+          <Badge variant="destructive">
+            <XCircle className="mr-1 h-3 w-3" />
+            Not Installed
+          </Badge>
+        )}
+      </div>
+      
+      {isMetaMaskInstalled && (
+        <div className="space-y-4">
+          {!isConnected ? (
+            <Button onClick={connectMetaMask}>Connect MetaMask</Button>
           ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-primary/5 rounded-md">
-                <div>
-                  <div className="text-sm font-medium">Connected Account</div>
-                  <div className="text-xs text-muted-foreground">
-                    {account}
-                  </div>
-                </div>
-                <Badge variant="outline" className="bg-green-500/10 text-green-600">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Connection Status</span>
+                <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-300">
                   Connected
                 </Badge>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 border rounded-md">
-                  <div className="text-sm font-medium mb-1">Network</div>
-                  <div className="text-lg font-bold">{network}</div>
-                </div>
-                
-                <div className="p-4 border rounded-md">
-                  <div className="text-sm font-medium mb-1">Balance</div>
-                  <div className="text-lg font-bold">{balance} ETH</div>
-                </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Account</span>
+                <span className="text-sm font-mono">{formatAddress(accountAddress)}</span>
               </div>
               
-              <div className="border-t pt-4">
-                <h3 className="text-sm font-medium mb-2">Integration Status</h3>
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    MetaMask detected and connected
-                  </li>
-                  <li className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Account access granted
-                  </li>
-                  <li className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Balance retrieved successfully
-                  </li>
-                </ul>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Network</span>
+                <span className="text-sm">{networkName}</span>
               </div>
               
-              <Button
-                variant="outline"
-                onClick={() => window.location.reload()}
-              >
-                Refresh Connection
-              </Button>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Balance</span>
+                <span className="text-sm">{balance} ETH</span>
+              </div>
+              
+              <div className="pt-2">
+                <p className="text-sm text-muted-foreground">
+                  MetaMask integration is working correctly. You can now implement blockchain transactions for the CivicChain platform.
+                </p>
+              </div>
             </div>
           )}
         </div>
-      </CardContent>
-    </Card>
+      )}
+      
+      {!isMetaMaskInstalled && (
+        <div className="rounded-md border p-4 bg-muted/50">
+          <p className="text-sm text-muted-foreground">
+            MetaMask is not installed. To test Web3 functionality, please install the MetaMask extension in your browser.
+          </p>
+          <Button 
+            variant="outline" 
+            className="mt-2"
+            onClick={() => window.open('https://metamask.io/download.html', '_blank')}
+          >
+            Install MetaMask
+          </Button>
+        </div>
+      )}
+    </div>
   )
 }
 
-// Extend the window object with ethereum
+// Add MetaMask interface for TypeScript
 declare global {
   interface Window {
     ethereum?: {
