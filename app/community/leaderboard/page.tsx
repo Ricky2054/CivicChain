@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
-import { DashboardHeader } from "@/components/dashboard-header"
-import { DashboardShell } from "@/components/dashboard-shell"
+import { DashboardClientWrapper } from "@/components/dashboard-client-wrapper"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -26,9 +25,10 @@ export const metadata: Metadata = {
 
 export default function LeaderboardPage() {
   return (
-    <DashboardShell>
-      <DashboardHeader heading="Community Leaderboard" text="See your ranking and top community members based on civic engagement." />
-      
+    <DashboardClientWrapper
+      heading="Community Leaderboard"
+      text="See your ranking and top community members based on civic engagement."
+    >
       <div className="grid gap-6">
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
@@ -107,65 +107,80 @@ export default function LeaderboardPage() {
                 <TabsTrigger value="friends">Friends</TabsTrigger>
               </TabsList>
               
-              <div className="mt-4 space-y-4">
-                {[
-                  { id: 1, name: "Sarah Johnson", rank: 1, score: 452, avatar: "SJ", trend: "stable", badges: ["Sustainability Champion", "Volunteer Leader"] },
-                  { id: 2, name: "Michael Chen", rank: 2, score: 445, avatar: "MC", trend: "up", badges: ["Education Advocate", "Tech Innovator"] },
-                  { id: 3, name: "Aisha Patel", rank: 3, score: 438, avatar: "AP", trend: "up", badges: ["Healthcare Volunteer", "Youth Mentor"] },
-                  { id: 4, name: "David Williams", rank: 4, score: 412, avatar: "DW", trend: "down", badges: ["Urban Planner", "Policy Expert"] },
-                  { id: 5, name: "Elena Rodriguez", rank: 5, score: 398, avatar: "ER", trend: "up", badges: ["Arts Advocate", "Community Organizer"] },
-                  { id: 12, name: "Alex Johnson", rank: 12, score: 278, avatar: "AJ", trend: "up", badges: ["Digital Citizen", "Finance Advocate"], isYou: true },
-                ].map(member => (
-                  <div 
-                    key={member.id} 
-                    className={`flex items-center justify-between rounded-md border p-4 ${member.isYou ? 'bg-muted/50 border-primary/50' : ''}`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-8">
-                        {member.rank <= 3 ? (
-                          <Trophy className={`h-5 w-5 ${
-                            member.rank === 1 ? 'text-yellow-500' : 
-                            member.rank === 2 ? 'text-slate-400' : 
-                            'text-amber-700'
-                          }`} />
-                        ) : (
-                          <span className="text-sm font-medium">#{member.rank}</span>
-                        )}
-                      </div>
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium">
-                        {member.avatar}
-                      </div>
-                      <div>
-                        <div className="flex items-center">
-                          <p className="font-medium">{member.name}</p>
-                          {member.isYou && <Badge className="ml-2" variant="outline">You</Badge>}
+              <TabsContent value="all">
+                <div className="mt-4 space-y-4">
+                  {[
+                    { id: 1, name: "Sarah Johnson", rank: 1, score: 452, avatar: "SJ", trend: "stable", badges: ["Sustainability Champion", "Volunteer Leader"] },
+                    { id: 2, name: "Michael Chen", rank: 2, score: 445, avatar: "MC", trend: "up", badges: ["Education Advocate", "Tech Innovator"] },
+                    { id: 3, name: "Aisha Patel", rank: 3, score: 438, avatar: "AP", trend: "up", badges: ["Healthcare Volunteer", "Youth Mentor"] },
+                    { id: 4, name: "David Williams", rank: 4, score: 412, avatar: "DW", trend: "down", badges: ["Urban Planner", "Policy Expert"] },
+                    { id: 5, name: "Elena Rodriguez", rank: 5, score: 398, avatar: "ER", trend: "up", badges: ["Arts Advocate", "Community Organizer"] },
+                    { id: 12, name: "Alex Johnson", rank: 12, score: 278, avatar: "AJ", trend: "up", badges: ["Digital Citizen", "Finance Advocate"], isYou: true },
+                  ].map(member => (
+                    <div 
+                      key={member.id} 
+                      className={`flex items-center justify-between rounded-md border p-4 ${member.isYou ? 'bg-muted/50 border-primary/50' : ''}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-center w-8">
+                          {member.rank <= 3 ? (
+                            <Trophy className={`h-5 w-5 ${
+                              member.rank === 1 ? 'text-yellow-500' : 
+                              member.rank === 2 ? 'text-slate-400' : 
+                              'text-amber-700'
+                            }`} />
+                          ) : (
+                            <span className="text-sm font-medium">#{member.rank}</span>
+                          )}
                         </div>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {member.badges.map((badge, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs py-0 px-1">{badge}</Badge>
-                          ))}
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium">
+                          {member.avatar}
                         </div>
+                        <div>
+                          <div className="flex items-center">
+                            <p className="font-medium">{member.name}</p>
+                            {member.isYou && <Badge className="ml-2" variant="outline">You</Badge>}
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {member.badges.map((badge, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs py-0 px-1">{badge}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center justify-end">
+                          <p className="font-medium">{member.score}</p>
+                          {member.trend === 'up' && <ArrowUpRight className="ml-1 h-4 w-4 text-green-500" />}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Impact Score</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="flex items-center justify-end">
-                        <p className="font-medium">{member.score}</p>
-                        {member.trend === 'up' && <ArrowUpRight className="ml-1 h-4 w-4 text-green-500" />}
-                      </div>
-                      <p className="text-xs text-muted-foreground">Impact Score</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
+                  ))}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="near-you">
+                <div className="mt-4 flex items-center justify-center p-4 text-muted-foreground">
+                  No members found near your location
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="friends">
+                <div className="mt-4 flex items-center justify-center p-4 text-muted-foreground">
+                  Connect with friends to see their civic engagement
+                </div>
+              </TabsContent>
+            </Tabs>
+            
+            <div className="flex justify-between mt-4">
               <div className="text-sm text-muted-foreground">Showing 6 of 547 members</div>
               <div className="flex gap-1">
                 <Button variant="outline" size="sm" disabled>Previous</Button>
                 <Button variant="outline" size="sm">Next</Button>
               </div>
-            </CardFooter>
-          </Card>
+            </div>
+          </CardContent>
         </Card>
         
         <div className="grid gap-6 md:grid-cols-2">
@@ -322,6 +337,6 @@ export default function LeaderboardPage() {
           </Card>
         </div>
       </div>
-    </DashboardShell>
+    </DashboardClientWrapper>
   )
 } 

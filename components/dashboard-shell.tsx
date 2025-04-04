@@ -1,3 +1,5 @@
+"use client"
+
 import type React from "react"
 import { cn } from "@/lib/utils"
 import { MainNav } from "@/components/main-nav"

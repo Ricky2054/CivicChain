@@ -1,7 +1,5 @@
 import type { Metadata } from "next"
-import { DashboardHeader } from "@/components/dashboard-header"
-import { DashboardShell } from "@/components/dashboard-shell"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { DashboardClientWrapper } from "@/components/dashboard-client-wrapper"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -28,9 +26,10 @@ export const metadata: Metadata = {
 
 export default function CommunityPage() {
   return (
-    <DashboardShell>
-      <DashboardHeader heading="Community" text="Engage with your community, participate in governance, and track your impact." />
-      
+    <DashboardClientWrapper
+      heading="Community"
+      text="Engage with your community, participate in governance, and track your impact."
+    >
       <Tabs defaultValue="leaderboard" className="w-full">
         <TabsList className="grid w-full md:w-[400px] grid-cols-2">
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
@@ -162,7 +161,7 @@ export default function CommunityPage() {
                   {[
                     { category: "Environmental", score: 72, description: "Sustainability initiatives", icon: <ShieldCheck className="h-5 w-5 text-green-600" /> },
                     { category: "Civic Participation", score: 85, description: "Voting & public forums", icon: <Vote className="h-5 w-5 text-blue-600" /> },
-                    { category: "Education", score: 63, description: "Learning & workshops", icon: <BadgeCheck className="h-5 w-5 text-indigo-600" /> },
+                    { category: "Education", score: 63, description: "Learning & workshops", icon: <CustomBadgeCheck className="h-5 w-5 text-indigo-600" /> },
                     { category: "Economic", score: 58, description: "Local economy support", icon: <BarChart className="h-5 w-5 text-amber-600" /> },
                   ].map((category, index) => (
                     <div key={index} className="space-y-2">
@@ -450,11 +449,11 @@ export default function CommunityPage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </DashboardShell>
+    </DashboardClientWrapper>
   )
 }
 
-function BadgeCheck(props) {
+function CustomBadgeCheck(props) {
   return (
     <svg
       {...props}

@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
-import { DashboardHeader } from "@/components/dashboard-header"
-import { DashboardShell } from "@/components/dashboard-shell"
+import { DashboardClientWrapper } from "@/components/dashboard-client-wrapper"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CircleDollarSign, TrendingUp, Wallet, CreditCard, LineChart, ArrowUpRight, ArrowDownRight } from "lucide-react"
@@ -12,9 +11,10 @@ export const metadata: Metadata = {
 
 export default function FinancePage() {
   return (
-    <DashboardShell>
-      <DashboardHeader heading="Finance Dashboard" text="Manage your wallet, transactions, and investments in one place." />
-      
+    <DashboardClientWrapper
+      heading="Finance Dashboard"
+      text="Manage your wallet, transactions, and investments in one place."
+    >
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full md:w-[400px] grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -226,6 +226,6 @@ export default function FinancePage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </DashboardShell>
+    </DashboardClientWrapper>
   )
 } 
